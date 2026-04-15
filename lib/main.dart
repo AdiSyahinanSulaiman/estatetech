@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/main_screen.dart'; // This links the two files
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const EstateTechApp());
@@ -19,7 +19,7 @@ class EstateTechApp extends StatelessWidget {
         colorSchemeSeed: Colors.white,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const MainScreen(),
+      home: const LoginScreen(),
     );
   }
 }
