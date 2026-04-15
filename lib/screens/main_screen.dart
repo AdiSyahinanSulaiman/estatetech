@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'add_post_screen.dart';
 import 'explore_screen.dart';
+import 'profile_screen.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     ExploreScreen(),
     AddPostScreen(),
     const Center(child: Text('Messages')),
-    const Center(child: Text('Profile')),
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
