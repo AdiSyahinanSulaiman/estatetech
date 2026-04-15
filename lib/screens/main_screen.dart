@@ -3,6 +3,7 @@ import 'home_screen.dart';
 import 'add_post_screen.dart';
 import 'explore_screen.dart';
 import 'profile_screen.dart';
+import 'saved_screen.dart';
 
 
 class MainScreen extends StatefulWidget {

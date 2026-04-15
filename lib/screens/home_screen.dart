@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/property.dart';
-import '../data/mock_data.dart'; // Add this import
+import '../data/mock_data.dart';
 import 'details_screen.dart';
 
-class HomeScreen extends StatefulWidget { // Changed to StatefulWidget
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
@@ -23,13 +23,12 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              setState(() {}); // This refreshes the feed to show new posts
+              setState(() {}); // Refreshes the feed
             },
           )
         ],
       ),
       body: ListView.builder(
-        // We are now using the GLOBAL list from mock_data.dart
         itemCount: globalProperties.length,
         padding: const EdgeInsets.all(16),
         itemBuilder: (context, index) {
@@ -60,32 +59,69 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                    child: Image.network(
-                      item.imageUrl,
-                      height: 250,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
+                  // Stack allows putting the Heart button on top of the Image
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                        child: Image.network(
+                          item.imageUrl,
                           height: 250,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
-                        );
-                      },
-                    ),
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 250,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
+                            );
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white.withOpacity(0.9),
+                          child: IconButton(
+                            icon: Icon(
+                              item.isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: item.isLiked ? Colors.red : Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                item.isLiked = !item.isLiked;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  // Information Section
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(
+                          item.title,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
-                        Text(item.location, style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          item.location,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                         const SizedBox(height: 8),
-                        Text('\$${item.price} / month', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.blueAccent)),
+                        Text(
+                          '\$${item.price} / month',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
                       ],
                     ),
                   ),
