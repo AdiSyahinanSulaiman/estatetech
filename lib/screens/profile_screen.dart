@@ -16,6 +16,7 @@ class ProfileScreen extends StatelessWidget {
       body: Column(
         children: [
           const SizedBox(height: 20),
+          // User Info
           const CircleAvatar(
             radius: 50,
             backgroundImage: NetworkImage('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop'),
@@ -25,14 +26,20 @@ class ProfileScreen extends StatelessWidget {
           const Text('Verified Landlord', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 25),
           const Divider(),
+
+          // Menu Options
           Expanded(
             child: ListView(
               children: [
-                _ProfileOption(icon: Icons.home_work_outlined, label: 'My Listings', onTap: () {}),
-
-                // Clicking this now opens our Saved Properties page!
                 _ProfileOption(
-                    icon: Icons.favorite_border,
+                    icon: Icons.home_work_outlined,
+                    label: 'My Listings',
+                    onTap: () {}
+                ),
+
+                // CHANGED: icon from Icons.favorite_border to Icons.bookmark_outline
+                _ProfileOption(
+                    icon: Icons.bookmark_outline,
                     label: 'Saved Properties',
                     onTap: () {
                       Navigator.push(
@@ -42,8 +49,18 @@ class ProfileScreen extends StatelessWidget {
                     }
                 ),
 
-                _ProfileOption(icon: Icons.payment_outlined, label: 'Payments', onTap: () {}),
-                _ProfileOption(icon: Icons.logout, label: 'Logout', color: Colors.red, onTap: () {}),
+                _ProfileOption(
+                    icon: Icons.payment_outlined,
+                    label: 'Payments',
+                    onTap: () {}
+                ),
+
+                _ProfileOption(
+                    icon: Icons.logout,
+                    label: 'Logout',
+                    color: Colors.red,
+                    onTap: () {}
+                ),
               ],
             ),
           ),
@@ -53,11 +70,12 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
+// Reusable Menu Option Widget
 class _ProfileOption extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap; // Added this
+  final VoidCallback onTap;
 
   const _ProfileOption({
     required this.icon,
@@ -72,7 +90,7 @@ class _ProfileOption extends StatelessWidget {
       leading: Icon(icon, color: color),
       title: Text(label, style: TextStyle(color: color)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap, // Added this
+      onTap: onTap,
     );
   }
 }

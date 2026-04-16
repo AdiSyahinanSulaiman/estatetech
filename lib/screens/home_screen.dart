@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/property.dart';
 import '../data/mock_data.dart';
 import 'details_screen.dart';
+import 'chat_detail_screen.dart'; // Add this
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,18 +16,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EstateTech', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('EstateTech', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: false,
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {}); // Refreshes the feed
-            },
-          )
-        ],
       ),
       body: ListView.builder(
         itemCount: globalProperties.length,
@@ -38,89 +31,83 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => DetailsScreen(property: item),
-                ),
+                MaterialPageRoute(builder: (context) => DetailsScreen(property: item)),
               );
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 20),
+              margin: const EdgeInsets.only(bottom: 25),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(12),
                 color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+                border: Border.all(color: Colors.grey.shade200), // Serious, neutral border
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Stack allows putting the Heart button on top of the Image
+                  // Image Section
                   Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                         child: Image.network(
                           item.imageUrl,
-                          height: 250,
+                          height: 220,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 250,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
-                            );
-                          },
                         ),
                       ),
+                      // Save Button (Bookmark icon)
                       Positioned(
                         top: 12,
                         right: 12,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white.withOpacity(0.9),
-                          child: IconButton(
-                            icon: Icon(
-                              item.isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: item.isLiked ? Colors.red : Colors.grey,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              item.isSaved = !item.isSaved;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                             ),
-                            onPressed: () {
-                              setState(() {
-                                item.isLiked = !item.isLiked;
-                              });
-                            },
+                            child: Icon(
+                              item.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                              color: Colors.black, // Neutral black color
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  // Information Section
+                  // Content Section
                   Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    padding: const EdgeInsets.all(15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          item.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(item.location, style: TextStyle(color: Colors.grey.shade600)),
+                            const SizedBox(height: 8),
+                            Text('\$${item.price} / month', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.location,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '\$${item.price} / month',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blueAccent,
-                          ),
+                        // Quick Message Button
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ChatDetailScreen(landlordName: "Seller")),
+                            );
+                          },
+                          icon: const Icon(Icons.chat_bubble_outline, color: Colors.black54),
                         ),
                       ],
                     ),

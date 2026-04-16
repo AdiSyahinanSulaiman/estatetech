@@ -4,7 +4,7 @@ class Property {
   final String location;
   final double price;
   final String imageUrl;
-  bool isLiked; // New field to track the heart button
+  bool isSaved; //  field to track the saved button
 
   Property({
     required this.id,
@@ -12,6 +12,6 @@ class Property {
     required this.location,
     required this.price,
     required this.imageUrl,
-    this.isLiked = false, // Defaults to not liked
+    this.isSaved = false, // Defaults is not saved
   });
 }

@@ -10,7 +10,7 @@ class SavedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // This line "filters" the list to only show liked items
     final List<Property> savedItems =
-    globalProperties.where((p) => p.isLiked).toList();
+    globalProperties.where((p) => p.isSaved).toList();
 
     return Scaffold(
       appBar: AppBar(
