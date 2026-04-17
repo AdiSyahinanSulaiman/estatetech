@@ -4,6 +4,7 @@ import 'add_post_screen.dart';
 import 'explore_screen.dart';
 import 'profile_screen.dart';
 import 'saved_screen.dart';
+import 'messages_screen.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     ExploreScreen(),
     AddPostScreen(),
-    const Center(child: Text('Messages')),
+    MessagesScreen(),
     ProfileScreen(),
   ];
 

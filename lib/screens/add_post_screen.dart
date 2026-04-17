@@ -25,6 +25,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
       location: _locationController.text,
       price: double.parse(_priceController.text),
       imageUrl: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1000&auto=format&fit=crop', // Default house image
+      virtualTourUrl: 'https://pannellum.org/images/alma.jpg',
     );
 
     // Add it to our global list

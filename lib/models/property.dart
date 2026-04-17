@@ -4,6 +4,7 @@ class Property {
   final String location;
   final double price;
   final String imageUrl;
+  final String virtualTourUrl;
   bool isSaved; //  field to track the saved button
 
   Property({
@@ -12,6 +13,7 @@ class Property {
     required this.location,
     required this.price,
     required this.imageUrl,
+    required this.virtualTourUrl,
     this.isSaved = false, // Defaults is not saved
   });
 }

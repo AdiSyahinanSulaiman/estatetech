@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/property.dart';
 import 'chat_detail_screen.dart';
+import 'virtual_tour_screen.dart';
 
 class DetailsScreen extends StatefulWidget {
   final Property property;
@@ -16,14 +17,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // Extends the image behind the status bar
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // Serious bookmark button instead of a heart
           IconButton(
             icon: Icon(
               widget.property.isSaved ? Icons.bookmark : Icons.bookmark_border,
@@ -42,19 +41,46 @@ class _DetailsScreenState extends State<DetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Property Image
-            Image.network(
-              widget.property.imageUrl,
-              height: 400,
-              width: double.infinity,
-              fit: BoxFit.cover,
+            // Image Section with 360 Button
+            Stack(
+              children: [
+                Image.network(
+                  widget.property.imageUrl,
+                  height: 450,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+                // The Virtual Tour Trigger
+                Positioned(
+                  bottom: 30,
+                  right: 20,
+                  child: FloatingActionButton.extended(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VirtualTourScreen(
+                            imageUrl: widget.property.virtualTourUrl,
+                          ),
+                        ),
+                      );
+                    },
+                    backgroundColor: Colors.white.withOpacity(0.9),
+                    elevation: 4,
+                    icon: const Icon(Icons.view_in_ar, color: Colors.black),
+                    label: const Text(
+                      '360° Tour',
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and Price Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -66,7 +92,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       ),
                       Text(
                         '\$${widget.property.price}',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent
+                        ),
                       ),
                     ],
                   ),
@@ -84,11 +114,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'This professional listing offers premium amenities and a highly desirable location. Suitable for individuals looking for a long-term, high-quality residence.',
+                    'Experience luxury living with this exclusive listing. This property features premium finishes and is available for immediate viewing via our 360° virtual tour.',
                     style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.6),
                   ),
                   const SizedBox(height: 40),
-                  // Contact Button
+                  // Message Button
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -108,7 +138,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(height: 50), // Extra space for scrolling
+                  const SizedBox(height: 50),
                 ],
               ),
             ),

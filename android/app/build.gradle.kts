@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.estatetech.app.estatetech"
-    compileSdk = 34 // Manually set to 34 for Android 14
+    compileSdk = 34
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -15,14 +15,14 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.estatetech.app.estatetech"
 
-        // Manual overrides for stability and Firebase compatibility
-        minSdk = flutter.minSdkVersion
+        // Hardcoded to 23 for 360 viewer and Firebase stability
+        minSdk = 24
         targetSdk = 34
 
         versionCode = flutter.versionCode
@@ -31,7 +31,6 @@ android {
 
     buildTypes {
         release {
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
