@@ -4,8 +4,8 @@ class Property {
   final String location;
   final double price;
   final String imageUrl;
-  final String virtualTourUrl;
-  bool isSaved; //  field to track the saved button
+  final String virtualTourUrl; // The 360 link
+  bool isSaved;
 
   Property({
     required this.id,
@@ -14,6 +14,6 @@ class Property {
     required this.price,
     required this.imageUrl,
     required this.virtualTourUrl,
-    this.isSaved = false, // Defaults is not saved
+    this.isSaved = false,
   });
 }

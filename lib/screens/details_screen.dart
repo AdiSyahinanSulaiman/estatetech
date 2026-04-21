@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/property.dart';
 import 'chat_detail_screen.dart';
-import 'virtual_tour_screen.dart';
+import 'virtual_tour_screen.dart'; // Links to our 360 viewer
 
 class DetailsScreen extends StatefulWidget {
   final Property property;
@@ -17,12 +17,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: true, // Image goes under the status bar
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // Bookmark button for the serious real estate look
           IconButton(
             icon: Icon(
               widget.property.isSaved ? Icons.bookmark : Icons.bookmark_border,
@@ -50,7 +51,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
-                // The Virtual Tour Trigger
+                // The floating button to launch 360 Tour
                 Positioned(
                   bottom: 30,
                   right: 20,
@@ -70,7 +71,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     icon: const Icon(Icons.view_in_ar, color: Colors.black),
                     label: const Text(
                       '360° Tour',
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold
+                      ),
                     ),
                   ),
                 ),
@@ -81,6 +85,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title and Price
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -114,7 +119,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Experience luxury living with this exclusive listing. This property features premium finishes and is available for immediate viewing via our 360° virtual tour.',
+                    'Experience luxury living with this exclusive listing. This property features premium finishes and is available for immediate viewing via our interactive 360° virtual tour.',
                     style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.6),
                   ),
                   const SizedBox(height: 40),
