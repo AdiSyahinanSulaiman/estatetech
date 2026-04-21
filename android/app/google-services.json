@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249341444259",
+    "project_id": "estatetech-app",
+    "storage_bucket": "estatetech-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249341444259:android:02c2da5c3a56645e273f16",
+        "android_client_info": {
+          "package_name": "com.estatetech.app.estatetech"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt7KXfAlmmOPLf8JLzxfppz7aKUPcQWis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

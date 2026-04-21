@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -21,9 +24,11 @@ android {
     defaultConfig {
         applicationId = "com.estatetech.app.estatetech"
 
-        // Hardcoded to 23 for 360 viewer and Firebase stability
+
+        // // Updated to 24 for WebView and Firebase stability
         minSdk = 24
         targetSdk = 34
+        multiDexEnabled = true
 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
