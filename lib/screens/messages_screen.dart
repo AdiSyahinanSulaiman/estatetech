@@ -59,7 +59,7 @@ class MessagesScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ChatDetailScreen(landlordName: chat['name']!),
+                  builder: (context) => ChatDetailScreen(sellerId: chat['name']!),
                 ),
               );
             },

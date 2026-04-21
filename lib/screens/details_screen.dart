@@ -129,7 +129,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ChatDetailScreen(landlordName: "Listing Agent"),
+                          builder: (context) => const ChatDetailScreen(sellerId: "Listing Agent"),
                         ),
                       );
                     },
