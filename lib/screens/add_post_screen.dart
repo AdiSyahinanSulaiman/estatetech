@@ -26,25 +26,33 @@ class _AddPostScreenState extends State<AddPostScreen> {
   ];
 
   Future<void> _submitData() async {
-    if (_titleController.text.isEmpty || _priceController.text.isEmpty) return;
+    if (_titleController.text.isEmpty || _priceController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Title and Price are required')));
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       String myUid = FirebaseAuth.instance.currentUser!.uid;
+
+      // 1. Get user name from Firestore
       var userDoc = await FirebaseFirestore.instance.collection('users').doc(myUid).get();
       String sName = userDoc.exists ? (userDoc.data() as Map<String, dynamic>)['name'] : "Landlord";
 
-      // LOGIC: If user didn't provide a link, use a random one
+      // 2. FIXED: This line ensures the DP is always the same professional Blue
+      String sPhoto = "https://ui-avatars.com/api/?name=$sName&background=0D8ABC&color=fff";
+
+      // 3. Image Logic
       String finalImage = _imageController.text.isNotEmpty
           ? _imageController.text.trim()
           : _autoPhotos[Random().nextInt(_autoPhotos.length)];
 
-      // LOGIC: If user didn't provide a 360 link, use a default interior
       String finalTour = _tourController.text.isNotEmpty
           ? _tourController.text.trim()
           : 'https://images.pexels.com/photos/12148587/pexels-photo-12148587.jpeg';
 
+      // 4. Save everything to the Cloud
       await FirebaseFirestore.instance.collection('properties').add({
         'title': _titleController.text.trim(),
         'location': _locationController.text.trim(),
@@ -54,13 +62,13 @@ class _AddPostScreenState extends State<AddPostScreen> {
         'createdAt': Timestamp.now(),
         'sellerId': myUid,
         'sellerName': sName,
-        'sellerPhoto': "https://ui-avatars.com/api/?name=$sName&background=random",
+        'sellerPhoto': sPhoto, // Saves the permanent blue photo link
       });
 
       if (mounted) {
         _titleController.clear(); _locationController.clear(); _priceController.clear();
         _imageController.clear(); _tourController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing Published Successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing Published!')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -73,11 +81,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Post New Listing', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Post New Listing', style: TextStyle(fontWeight: FontWeight.bold))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -87,16 +91,14 @@ class _AddPostScreenState extends State<AddPostScreen> {
             TextField(controller: _locationController, decoration: const InputDecoration(labelText: 'Location Name', border: OutlineInputBorder())),
             const SizedBox(height: 15),
             TextField(controller: _priceController, decoration: const InputDecoration(labelText: 'Price per Month', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            const SizedBox(height: 15),
+            TextField(controller: _imageController, decoration: const InputDecoration(labelText: 'Cover Photo URL (Optional)', border: OutlineInputBorder())),
+            const SizedBox(height: 15),
+            TextField(controller: _tourController, decoration: const InputDecoration(labelText: '360 Tour URL (Optional)', border: OutlineInputBorder())),
             const SizedBox(height: 30),
-            const Divider(),
-            const SizedBox(height: 15),
-            TextField(controller: _imageController, decoration: const InputDecoration(labelText: 'Custom Photo URL (Optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 15),
-            TextField(controller: _tourController, decoration: const InputDecoration(labelText: 'Custom 360 Tour URL (Optional)', border: OutlineInputBorder())),
-            const SizedBox(height: 40),
             _isLoading ? const CircularProgressIndicator() : ElevatedButton(
               onPressed: _submitData,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 55)),
               child: const Text('Publish Listing', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],

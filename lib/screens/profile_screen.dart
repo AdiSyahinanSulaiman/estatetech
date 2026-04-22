@@ -51,7 +51,7 @@ class ProfileScreen extends StatelessWidget {
                 radius: 50,
                 backgroundColor: Colors.grey[200],
                 backgroundImage: NetworkImage(
-                  "https://ui-avatars.com/api/?name=$name&background=random&size=128",
+                  "https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff&size=128",
                 ),
               ),
               const SizedBox(height: 15),
