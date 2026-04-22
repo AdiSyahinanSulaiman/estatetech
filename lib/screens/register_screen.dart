@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Add this
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,35 +10,37 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Controllers to grab the text from the boxes
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   bool _isLoading = false;
 
-  // The function that talks to the Cloud
   Future<void> _handleRegister() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) return;
+    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // 1. Tell Firebase to create the user
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // 1. Create the account in Firebase Auth
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // 2. Success! Show a message and go back
+      // 2. Save the user's name to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'createdAt': Timestamp.now(),
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account Created! Please Login.')),
         );
-        Navigator.pop(context); // Go back to login screen
+        Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
-      // 3. If it fails (e.g. email already exists), show the error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Registration Failed')),
       );
@@ -65,7 +68,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder())),
               const SizedBox(height: 30),
-
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(

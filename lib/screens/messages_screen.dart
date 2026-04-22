@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_detail_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
@@ -6,61 +8,62 @@ class MessagesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock data for the inbox list
-    final List<Map<String, String>> chats = [
-      {
-        'name': 'John Doe',
-        'lastMessage': 'The viewing is scheduled for 10 AM.',
-        'time': '2m ago',
-        'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000'
-      },
-      {
-        'name': 'Sarah Smith',
-        'lastMessage': 'Is the deposit refundable?',
-        'time': '1h ago',
-        'image': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000'
-      },
-      {
-        'name': 'Urban Realty',
-        'lastMessage': 'We received your application.',
-        'time': 'Yesterday',
-        'image': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1000'
-      },
-    ];
+    final String? myId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
       ),
-      body: ListView.separated(
-        itemCount: chats.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, indent: 80),
-        itemBuilder: (context, index) {
-          final chat = chats[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            leading: CircleAvatar(
-              radius: 30,
-              backgroundImage: NetworkImage(chat['image']!),
-            ),
-            title: Text(chat['name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(
-              chat['lastMessage']!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            trailing: Text(chat['time']!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatDetailScreen(sellerId: chat['name']!),
-                ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('messages').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          // 1. Find all unique IDs of people I have messaged
+          final List<String> chatPartners = [];
+          for (var doc in snapshot.data!.docs) {
+            var d = doc.data() as Map<String, dynamic>;
+            if (d['senderId'] == myId) chatPartners.add(d['receiverId']);
+            if (d['receiverId'] == myId) chatPartners.add(d['senderId']);
+          }
+          final uniquePartners = chatPartners.toSet().toList();
+
+          if (uniquePartners.isEmpty) {
+            return const Center(child: Text("No messages yet."));
+          }
+
+          return ListView.builder(
+            itemCount: uniquePartners.length,
+            itemBuilder: (context, index) {
+              final partnerId = uniquePartners[index];
+
+              // 2. This sub-widget looks up the Real Name for each ID
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
+                builder: (context, userSnapshot) {
+                  // While waiting for name, show a loading line
+                  if (!userSnapshot.hasData) return const ListTile(title: Text("Loading..."));
+
+                  // Grab the name and initials from the user's document
+                  var userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                  String name = userData?['name'] ?? "User";
+                  String photo = "https://ui-avatars.com/api/?name=$name&background=random";
+
+                  return ListTile(
+                    leading: CircleAvatar(backgroundImage: NetworkImage(photo)),
+                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Tap to view conversation"),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => ChatDetailScreen(sellerId: partnerId),
+                      ));
+                    },
+                  );
+                },
               );
             },
           );

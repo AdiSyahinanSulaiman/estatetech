@@ -5,7 +5,9 @@ class Property {
   final double price;
   final String imageUrl;
   final String virtualTourUrl;
-  final String sellerId; // Added this
+  final String sellerId;
+  final String sellerName;
+  final String sellerPhoto;
   bool isSaved;
 
   Property({
@@ -15,7 +17,9 @@ class Property {
     required this.price,
     required this.imageUrl,
     required this.virtualTourUrl,
-    required this.sellerId, // Added this
+    required this.sellerId,
+    required this.sellerName,
+    required this.sellerPhoto,
     this.isSaved = false,
   });
 
@@ -27,7 +31,9 @@ class Property {
       price: (data['price'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'] ?? '',
       virtualTourUrl: data['virtualTourUrl'] ?? '',
-      sellerId: data['sellerId'] ?? 'unknown', // Added this
+      sellerId: data['sellerId'] ?? 'unknown',
+      sellerName: data['sellerName'] ?? 'Landlord',
+      sellerPhoto: data['sellerPhoto'] ?? 'https://ui-avatars.com/api/?name=User',
       isSaved: false,
     );
   }
