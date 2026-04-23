@@ -8,7 +8,8 @@ class Property {
   final String sellerId;
   final String sellerName;
   final String sellerPhoto;
-  bool isSaved;
+  final String houseType;
+  bool isSaved; // This must not be final so we can change it
 
   Property({
     required this.id,
@@ -20,6 +21,7 @@ class Property {
     required this.sellerId,
     required this.sellerName,
     required this.sellerPhoto,
+    required this.houseType,
     this.isSaved = false,
   });
 
@@ -31,9 +33,10 @@ class Property {
       price: (data['price'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'] ?? '',
       virtualTourUrl: data['virtualTourUrl'] ?? '',
-      sellerId: data['sellerId'] ?? 'unknown',
+      sellerId: data['sellerId'] ?? '',
       sellerName: data['sellerName'] ?? 'Landlord',
-      sellerPhoto: data['sellerPhoto'] ?? 'https://ui-avatars.com/api/?name=User',
+      sellerPhoto: data['sellerPhoto'] ?? '',
+      houseType: data['houseType'] ?? 'Other',
       isSaved: false,
     );
   }
