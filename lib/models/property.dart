@@ -9,7 +9,7 @@ class Property {
   final String sellerName;
   final String sellerPhoto;
   final String houseType;
-  bool isSaved; // This must not be final so we can change it
+  bool isSaved;
 
   Property({
     required this.id,
@@ -37,7 +37,6 @@ class Property {
       sellerName: data['sellerName'] ?? 'Landlord',
       sellerPhoto: data['sellerPhoto'] ?? '',
       houseType: data['houseType'] ?? 'Other',
-      isSaved: false,
     );
   }
 }
