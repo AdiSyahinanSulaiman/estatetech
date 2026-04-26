@@ -1,6 +1,6 @@
 class Property {
   final String id;
-  final String houseType; // This is now the main name (Detached, Apartment, etc.)
+  final String houseType;
   final String location;
   final double monthlyPrice;
   final double totalPrice;
@@ -15,6 +15,7 @@ class Property {
   final int wetKitchen;
   final int dryKitchen;
   final int livingRoom;
+  final int sqft;
   bool isSaved;
 
   Property({
@@ -23,7 +24,7 @@ class Property {
     required this.virtualTourUrl, required this.sellerId, required this.sellerName,
     required this.sellerPhoto, required this.description, required this.rooms,
     required this.baths, required this.wetKitchen, required this.dryKitchen,
-    required this.livingRoom, this.isSaved = false,
+    required this.livingRoom, required this.sqft, this.isSaved = false,
   });
 
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
@@ -44,6 +45,7 @@ class Property {
       wetKitchen: data['wetKitchen'] ?? 0,
       dryKitchen: data['dryKitchen'] ?? 0,
       livingRoom: data['livingRoom'] ?? 0,
+      sqft: data['sqft'] ?? 0,
     );
   }
 }

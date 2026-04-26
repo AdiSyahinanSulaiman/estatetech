@@ -12,64 +12,167 @@ class MessagesScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.bold))),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('messages').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text("Inbox",
+            style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
+        actions: [
+          // Top right profile initials
+          Padding(
+            padding: const EdgeInsets.only(right: 15),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.blueGrey,
+              child: const Icon(Icons.person, color: Colors.white, size: 20),
+            ),
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          // 1. SEARCH BAR
+          Padding(
+            padding: const EdgeInsets.all(15),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const TextField(
+                decoration: InputDecoration(
+                  icon: Icon(Icons.search, color: Colors.grey),
+                  hintText: "Search conversations...",
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+          ),
 
-          Set<String> chatPartnerIds = {};
-          Map<String, bool> hasUnread = {}; // Tracks if this conversation has a new message
+          // 2. CONVERSATIONS LIST
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('messages').orderBy('timestamp', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-          for (var doc in snapshot.data!.docs) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            String partnerId = data['senderId'] == myId ? data['receiverId'] : data['senderId'];
+                // Logic to find unique people and their last message
+                Map<String, Map<String, dynamic>> conversations = {};
+                for (var doc in snapshot.data!.docs) {
+                  var d = doc.data() as Map<String, dynamic>;
+                  String partnerId = d['senderId'] == myId ? d['receiverId'] : d['senderId'];
 
-            if (data['senderId'] == myId || data['receiverId'] == myId) {
-              chatPartnerIds.add(partnerId);
-              // If I am the receiver and it is not read, mark as unread
-              if (data['receiverId'] == myId && data['isRead'] == false) {
-                hasUnread[partnerId] = true;
-              }
-            }
-          }
+                  if (d['senderId'] == myId || d['receiverId'] == myId) {
+                    if (!conversations.containsKey(partnerId)) {
+                      conversations[partnerId] = d;
+                    }
+                  }
+                }
 
-          return ListView(
-            children: chatPartnerIds.map((partnerId) {
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
-                builder: (context, userSnap) {
-                  if (!userSnap.hasData) return const SizedBox();
-                  String name = userSnap.data?['name'] ?? "User";
-                  bool unread = hasUnread[partnerId] ?? false;
+                if (conversations.isEmpty) return const Center(child: Text("No messages yet."));
 
-                  return ListTile(
-                    leading: CircleAvatar(backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff")),
-                    title: Text(name, style: TextStyle(fontWeight: unread ? FontWeight.bold : FontWeight.normal)),
-                    // THE SIGN: A blue dot if there is an unread message
-                    trailing: unread ? const Icon(Icons.brightness_1, color: Colors.blue, size: 12) : const Icon(Icons.arrow_forward_ios, size: 14),
-                    onTap: () {
-                      // Mark all messages from this person as Read
-                      _markAsRead(myId, partnerId);
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: partnerId)));
-                    },
-                  );
-                },
-              );
-            }).toList(),
-          );
-        },
+                return ListView(
+                  children: conversations.entries.map((entry) {
+                    String partnerId = entry.key;
+                    var lastMsg = entry.value;
+
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
+                      builder: (context, userSnap) {
+                        if (!userSnap.hasData) return const SizedBox();
+                        var userData = userSnap.data!.data() as Map<String, dynamic>?;
+                        String name = userData?['name'] ?? "User";
+
+                        return _buildConversationTile(context, name, partnerId, lastMsg, myId);
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _markAsRead(String myId, String partnerId) async {
-    var snap = await FirebaseFirestore.instance.collection('messages')
-        .where('receiverId', isEqualTo: myId)
-        .where('senderId', isEqualTo: partnerId)
-        .get();
-    for (var doc in snap.docs) {
-      doc.reference.update({'isRead': true});
-    }
+  Widget _buildConversationTile(BuildContext context, String name, String partnerId, Map<String, dynamic> lastMsg, String myId) {
+    bool unread = lastMsg['receiverId'] == myId && lastMsg['isRead'] == false;
+
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId))),
+
+          // LEFT SIDE: Property Image with Overlaid User Avatar
+          leading: SizedBox(
+            width: 70,
+            height: 70,
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=200", // Placeholder house
+                    width: 60, height: 60, fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.white,
+                    child: CircleAvatar(
+                      radius: 12,
+                      backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=random"),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // MIDDLE: Name, Property, and Message
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text("2h ago", style: TextStyle(color: Colors.grey, fontSize: 12)), // Static time for demo
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Modern Luxury Apartment", style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      lastMsg['text'],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: unread ? Colors.black : Colors.grey,
+                        fontWeight: unread ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  if (unread)
+                    Container(
+                      width: 10, height: 10,
+                      decoration: const BoxDecoration(color: Colors.pink, shape: BoxShape.circle),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, indent: 95), // Separator line
+      ],
+    );
   }
 }
