@@ -1,8 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Property {
   final String id;
-  final String houseType;
+  final String houseType; // This is now the main name (Detached, Apartment, etc.)
   final String location;
   final double monthlyPrice;
   final double totalPrice;
@@ -28,7 +26,6 @@ class Property {
     required this.livingRoom, this.isSaved = false,
   });
 
-  // This converts the Cloud data into a Property object
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
     return Property(
       id: documentId,

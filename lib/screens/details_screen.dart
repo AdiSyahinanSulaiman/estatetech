@@ -33,7 +33,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
         actions: [
-          // Listen to Cloud for Save State
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(widget.property.id).snapshots(),
             builder: (context, snapshot) {
@@ -62,13 +61,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.property.houseType.toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Text(widget.property.houseType, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(widget.property.houseType.toUpperCase(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black)),
               Text(widget.property.location, style: const TextStyle(color: Colors.grey, fontSize: 18)),
-              const SizedBox(height: 25),
-              const Divider(),
-              const SizedBox(height: 25),
+              const SizedBox(height: 20),
+              Text("\$${widget.property.monthlyPrice.toStringAsFixed(0)} / month", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)),
+              const SizedBox(height: 30),
               const Text("Property Features", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               Wrap(spacing: 20, runSpacing: 20, children: [
@@ -84,7 +81,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               Text(widget.property.description, style: const TextStyle(fontSize: 16, height: 1.5)),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId))),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id))),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 60)),
                 child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               )
