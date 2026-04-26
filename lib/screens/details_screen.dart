@@ -18,13 +18,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _teachAI(); // User looked at this type, update AI score
+    _trackAI();
   }
 
-  void _teachAI() async {
-    await FirebaseFirestore.instance.collection('users').doc(myId).collection('preferences').doc(widget.property.houseType).set({
-      'views': FieldValue.increment(1),
-    }, SetOptions(merge: true));
+  void _trackAI() async {
+    await FirebaseFirestore.instance.collection('users').doc(myId).collection('preferences').doc(widget.property.houseType).set({'views': FieldValue.increment(1)}, SetOptions(merge: true));
   }
 
   @override
@@ -33,9 +31,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: Colors.transparent, elevation: 0,
         actions: [
+          // Listen to Cloud for Save State
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(widget.property.id).snapshots(),
             builder: (context, snapshot) {
@@ -53,7 +51,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        child: Column(children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Stack(children: [
             Image.network(widget.property.imageUrl, height: 400, width: double.infinity, fit: BoxFit.cover),
             Positioned(bottom: 20, right: 20, child: FloatingActionButton.extended(
@@ -62,19 +60,33 @@ class _DetailsScreenState extends State<DetailsScreen> {
             ))
           ]),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(widget.property.houseType.toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              Text(widget.property.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              Text(widget.property.location, style: const TextStyle(color: Colors.grey)),
+              Text(widget.property.houseType, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(widget.property.location, style: const TextStyle(color: Colors.grey, fontSize: 18)),
+              const SizedBox(height: 25),
+              const Divider(),
+              const SizedBox(height: 25),
+              const Text("Property Features", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
-              Text('\$${widget.property.price}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)),
+              Wrap(spacing: 20, runSpacing: 20, children: [
+                _feat(Icons.king_bed_outlined, "${widget.property.rooms} Rooms"),
+                _feat(Icons.bathtub_outlined, "${widget.property.baths} Baths"),
+                _feat(Icons.kitchen_outlined, "${widget.property.wetKitchen} Wet Kitchen"),
+                _feat(Icons.soup_kitchen_outlined, "${widget.property.dryKitchen} Dry Kitchen"),
+                _feat(Icons.chair_outlined, "${widget.property.livingRoom} Living Room"),
+              ]),
               const SizedBox(height: 30),
+              const Text("About this property", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Text(widget.property.description, style: const TextStyle(fontSize: 16, height: 1.5)),
+              const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId))),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 55)),
-                child: const Text("Message Landlord", style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 60)),
+                child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               )
             ]),
           )
@@ -82,4 +94,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
       ),
     );
   }
+
+  Widget _feat(IconData icon, String label) => Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: Colors.blue[800]), const SizedBox(width: 8), Text(label)]);
 }

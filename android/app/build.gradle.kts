@@ -1,18 +1,20 @@
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Firebase Google Services
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.estatetech.app.estatetech"
-    compileSdk = 34
+    compileSdk = 36 // Updated to 36 for modern multimedia support
 
     compileOptions {
+        // THIS IS THE CRITICAL FIX FOR THE NOTIFICATION ERROR
+        isCoreLibraryDesugaringEnabled = true
+
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -24,10 +26,11 @@ android {
     defaultConfig {
         applicationId = "com.estatetech.app.estatetech"
 
-
-        // // Updated to 24 for WebView and Firebase stability
+        // API 24 is required for modern WebViews and Storage
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
+
+        // Required because Firebase makes the app very large
         multiDexEnabled = true
 
         versionCode = flutter.versionCode
@@ -43,4 +46,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // THIS LINE IS REQUIRED TO SUPPORT MODERN JAVA FEATURES ON OLDER PHONES
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

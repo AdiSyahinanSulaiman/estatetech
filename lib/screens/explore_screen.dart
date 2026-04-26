@@ -9,53 +9,33 @@ class ExploreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trending Properties', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      // Explore also listens to the cloud database
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text('Explore Properties', style: TextStyle(fontWeight: FontWeight.bold)), elevation: 0, backgroundColor: Colors.white),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('properties').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-          final properties = snapshot.data!.docs.map((doc) {
-            return Property.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-          }).toList();
+          final props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
 
           return GridView.builder(
             padding: const EdgeInsets.all(10),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: properties.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.8),
+            itemCount: props.length,
             itemBuilder: (context, index) {
-              final item = properties[index];
+              final item = props[index];
               return GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))),
                 child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    image: DecorationImage(image: NetworkImage(item.imageUrl), fit: BoxFit.cover),
-                  ),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), image: DecorationImage(image: NetworkImage(item.imageUrl), fit: BoxFit.cover)),
                   child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.7), Colors.transparent]),
-                    ),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.7), Colors.transparent])),
                     padding: const EdgeInsets.all(10),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        Text('\$${item.price}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                      ],
-                    ),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.end, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      // FIXED: Changed .title to .houseType
+                      Text(item.houseType, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      // FIXED: Changed .price to .monthlyPrice
+                      Text('\$${item.monthlyPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    ]),
                   ),
                 ),
               );

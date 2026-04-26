@@ -1,42 +1,52 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Property {
   final String id;
-  final String title;
+  final String houseType;
   final String location;
-  final double price;
+  final double monthlyPrice;
+  final double totalPrice;
   final String imageUrl;
   final String virtualTourUrl;
   final String sellerId;
   final String sellerName;
   final String sellerPhoto;
-  final String houseType;
+  final String description;
+  final int rooms;
+  final int baths;
+  final int wetKitchen;
+  final int dryKitchen;
+  final int livingRoom;
   bool isSaved;
 
   Property({
-    required this.id,
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.imageUrl,
-    required this.virtualTourUrl,
-    required this.sellerId,
-    required this.sellerName,
-    required this.sellerPhoto,
-    required this.houseType,
-    this.isSaved = false,
+    required this.id, required this.houseType, required this.location,
+    required this.monthlyPrice, required this.totalPrice, required this.imageUrl,
+    required this.virtualTourUrl, required this.sellerId, required this.sellerName,
+    required this.sellerPhoto, required this.description, required this.rooms,
+    required this.baths, required this.wetKitchen, required this.dryKitchen,
+    required this.livingRoom, this.isSaved = false,
   });
 
+  // This converts the Cloud data into a Property object
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
     return Property(
       id: documentId,
-      title: data['title'] ?? '',
+      houseType: data['houseType'] ?? 'Property',
       location: data['location'] ?? '',
-      price: (data['price'] ?? 0).toDouble(),
+      monthlyPrice: (data['monthlyPrice'] ?? 0).toDouble(),
+      totalPrice: (data['totalPrice'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'] ?? '',
       virtualTourUrl: data['virtualTourUrl'] ?? '',
       sellerId: data['sellerId'] ?? '',
       sellerName: data['sellerName'] ?? 'Landlord',
       sellerPhoto: data['sellerPhoto'] ?? '',
-      houseType: data['houseType'] ?? 'Other',
+      description: data['description'] ?? '',
+      rooms: data['rooms'] ?? 0,
+      baths: data['baths'] ?? 0,
+      wetKitchen: data['wetKitchen'] ?? 0,
+      dryKitchen: data['dryKitchen'] ?? 0,
+      livingRoom: data['livingRoom'] ?? 0,
     );
   }
 }

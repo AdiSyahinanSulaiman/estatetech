@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'explore_screen.dart';
 import 'add_post_screen.dart';
-import 'calculator_screen.dart'; // NEW
+import 'calculator_screen.dart';
 import 'messages_screen.dart';
 import 'profile_screen.dart';
 
@@ -24,14 +24,16 @@ class _MainScreenState extends State<MainScreen> {
     _getUserRole();
   }
 
-  // Check the cloud to see if user is a Landlord or Tenant
   void _getUserRole() async {
     var doc = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).get();
-    if (mounted) {
-      setState(() {
-        userRole = doc.data()?['role'] ?? 'Tenant';
-      });
-    }
+    if (mounted) setState(() => userRole = doc.data()?['role'] ?? 'Tenant');
+  }
+
+  // Function to switch tabs programmatically
+  void _jumpToHome() {
+    setState(() {
+      _selectedIndex = 0;
+    });
   }
 
   @override
@@ -41,8 +43,10 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> _pages = [
       const HomeScreen(),
       const ExploreScreen(),
-      // LOGIC: Switch tab based on role
-      userRole == 'Landlord' ? const AddPostScreen() : const CalculatorScreen(),
+      // We pass the jump function to the Add screen here
+      userRole == 'Landlord'
+          ? AddPostScreen(onPostComplete: _jumpToHome)
+          : const CalculatorScreen(),
       const MessagesScreen(),
       const ProfileScreen(),
     ];
@@ -58,7 +62,6 @@ class _MainScreenState extends State<MainScreen> {
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           const BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-          // ICON CHANGE: Show + for Landlord, Calculator for Tenant
           BottomNavigationBarItem(
               icon: Icon(userRole == 'Landlord' ? Icons.add_box : Icons.calculate),
               label: userRole == 'Landlord' ? 'Add' : 'Calculate'

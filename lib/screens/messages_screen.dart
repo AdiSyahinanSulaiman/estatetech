@@ -14,20 +14,25 @@ class MessagesScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.bold))),
       body: StreamBuilder<QuerySnapshot>(
-        // Listen to ALL messages in the cloud
         stream: FirebaseFirestore.instance.collection('messages').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-          // Find unique people who have messaged me or I have messaged
           Set<String> chatPartnerIds = {};
+          Map<String, bool> hasUnread = {}; // Tracks if this conversation has a new message
+
           for (var doc in snapshot.data!.docs) {
             Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            if (data['senderId'] == myId) chatPartnerIds.add(data['receiverId']);
-            if (data['receiverId'] == myId) chatPartnerIds.add(data['senderId']);
-          }
+            String partnerId = data['senderId'] == myId ? data['receiverId'] : data['senderId'];
 
-          if (chatPartnerIds.isEmpty) return const Center(child: Text("No conversations yet."));
+            if (data['senderId'] == myId || data['receiverId'] == myId) {
+              chatPartnerIds.add(partnerId);
+              // If I am the receiver and it is not read, mark as unread
+              if (data['receiverId'] == myId && data['isRead'] == false) {
+                hasUnread[partnerId] = true;
+              }
+            }
+          }
 
           return ListView(
             children: chatPartnerIds.map((partnerId) {
@@ -36,16 +41,18 @@ class MessagesScreen extends StatelessWidget {
                 builder: (context, userSnap) {
                   if (!userSnap.hasData) return const SizedBox();
                   String name = userSnap.data?['name'] ?? "User";
+                  bool unread = hasUnread[partnerId] ?? false;
 
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff"),
-                    ),
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Tap to view messages"),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (context) => ChatDetailScreen(sellerId: partnerId),
-                    )),
+                    leading: CircleAvatar(backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff")),
+                    title: Text(name, style: TextStyle(fontWeight: unread ? FontWeight.bold : FontWeight.normal)),
+                    // THE SIGN: A blue dot if there is an unread message
+                    trailing: unread ? const Icon(Icons.brightness_1, color: Colors.blue, size: 12) : const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: () {
+                      // Mark all messages from this person as Read
+                      _markAsRead(myId, partnerId);
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: partnerId)));
+                    },
                   );
                 },
               );
@@ -54,5 +61,15 @@ class MessagesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _markAsRead(String myId, String partnerId) async {
+    var snap = await FirebaseFirestore.instance.collection('messages')
+        .where('receiverId', isEqualTo: myId)
+        .where('senderId', isEqualTo: partnerId)
+        .get();
+    for (var doc in snap.docs) {
+      doc.reference.update({'isRead': true});
+    }
   }
 }
