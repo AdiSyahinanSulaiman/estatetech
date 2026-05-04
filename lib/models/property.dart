@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Property {
   final String id;
   final String houseType;
@@ -16,6 +18,7 @@ class Property {
   final int dryKitchen;
   final int livingRoom;
   final int sqft;
+  final DateTime createdAt;
   bool isSaved;
 
   Property({
@@ -24,7 +27,8 @@ class Property {
     required this.virtualTourUrl, required this.sellerId, required this.sellerName,
     required this.sellerPhoto, required this.description, required this.rooms,
     required this.baths, required this.wetKitchen, required this.dryKitchen,
-    required this.livingRoom, required this.sqft, this.isSaved = false,
+    required this.livingRoom, required this.sqft, required this.createdAt,
+    this.isSaved = false,
   });
 
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
@@ -46,6 +50,9 @@ class Property {
       dryKitchen: data['dryKitchen'] ?? 0,
       livingRoom: data['livingRoom'] ?? 0,
       sqft: data['sqft'] ?? 0,
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 }

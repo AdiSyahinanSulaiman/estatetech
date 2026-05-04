@@ -1,138 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/global_user_dp.dart';
 import 'settings_screen.dart';
 import 'saved_screen.dart';
 import 'user_listings_screen.dart';
+import 'edit_profile_screen.dart';
+import 'search_users_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Get the current authenticated user
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        actions: [
-          // Settings Gear Icon
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      // FutureBuilder fetches the user's real name from the 'users' collection
-      body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('users').doc(user?.uid).get(),
-        builder: (context, snapshot) {
-          String name = "User";
-          if (snapshot.hasData && snapshot.data!.exists) {
-            var data = snapshot.data!.data() as Map<String, dynamic>;
-            name = data['name'] ?? "User";
-          }
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              // 1. THE APP BAR
+              SliverAppBar(
+                floating: true,
+                pinned: true,
+                backgroundColor: Colors.white,
+                elevation: 0,
+                title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                actions: [
+                  IconButton(icon: const Icon(Icons.person_add_alt_1_outlined, color: Colors.black),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SearchUsersScreen()))),
+                  IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.black),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SettingsScreen()))),
+                ],
+              ),
 
-          return Column(
+              // 2. THE SCROLLABLE HEADER (Avatar, Stats, Edit Button)
+              SliverToBoxAdapter(
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const LinearProgressIndicator();
+                    var userData = snapshot.data!.data() as Map<String, dynamic>;
+                    String name = userData['name'] ?? "User";
+                    String role = userData['role'] ?? "Tenant";
+
+                    return Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        // Large Profile Photo
+                        GlobalUserDP(radius: 60),
+                        const SizedBox(height: 15),
+                        Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        Text(role, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+                        const SizedBox(height: 25),
+
+                        // STATS (Estaters & Exploring)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildStat(user!.uid, 'properties', 'Posts'),
+                            _buildStat(user.uid, 'followers', 'Estaters'),
+                            _buildStat(user.uid, 'following', 'Exploring'),
+                          ],
+                        ),
+
+                        const SizedBox(height: 25),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => EditProfileScreen(userData: userData))),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[100], elevation: 0, minimumSize: const Size(double.infinity, 50)),
+                            child: const Text("Edit Profile", style: TextStyle(color: Colors.black)),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
+              // 3. THE STICKY TAB BAR
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverAppBarDelegate(
+                  const TabBar(
+                    indicatorColor: Color(0xFF1B263B),
+                    labelColor: Color(0xFF1B263B),
+                    unselectedLabelColor: Colors.grey,
+                    tabs: [Tab(icon: Icon(Icons.grid_view_rounded)), Tab(icon: Icon(Icons.bookmark_outline))],
+                  ),
+                ),
+              ),
+            ];
+          },
+          // 4. THE TAB CONTENT
+          body: const TabBarView(
             children: [
-              const SizedBox(height: 30),
-              // Profile Picture (Initials DP)
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: NetworkImage(
-                  "https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff&size=128",
-                ),
-              ),
-              const SizedBox(height: 15),
-              // User Name and Email
-              Text(
-                name,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                user?.email ?? "No email provided",
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
-              const SizedBox(height: 30),
-              const Divider(thickness: 1, indent: 20, endIndent: 20),
-
-              // Menu Options
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  children: [
-                    _ProfileOption(
-                      icon: Icons.bookmark_outline,
-                      label: 'Saved Properties',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SavedScreen()),
-                        );
-                      },
-                    ),
-                    _ProfileOption(
-                      icon: Icons.home_work_outlined,
-                      label: 'My Listings',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const UserListingsScreen()),
-                        );
-                      },
-                    ),
-                    _ProfileOption(
-                      icon: Icons.help_outline,
-                      label: 'Support & Feedback',
-                      onTap: () {
-                        // Placeholder for future feature
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              UserListingsScreen(),
+              SavedScreen(),
             ],
-          );
-        },
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildStat(String uid, String collection, String label) {
+    Stream<QuerySnapshot> stream = (collection == 'properties')
+        ? FirebaseFirestore.instance.collection('properties').where('sellerId', isEqualTo: uid).snapshots()
+        : FirebaseFirestore.instance.collection('users').doc(uid).collection(collection).snapshots();
+
+    return StreamBuilder<QuerySnapshot>(
+        stream: stream,
+        builder: (context, snap) {
+          String value = snap.hasData ? snap.data!.docs.length.toString() : "0";
+          return Column(children: [
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(label, style: const TextStyle(color: Colors.grey)),
+          ]);
+        }
     );
   }
 }
 
-// Helper Widget for the Menu Rows
-class _ProfileOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ProfileOption({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.black, size: 26),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-      onTap: onTap,
-    );
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate(this._tabBar);
+  final TabBar _tabBar;
+  @override double get minExtent => _tabBar.preferredSize.height;
+  @override double get maxExtent => _tabBar.preferredSize.height;
+  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(color: Colors.white, child: _tabBar);
   }
+  @override bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
 }

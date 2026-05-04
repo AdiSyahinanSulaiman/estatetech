@@ -3,11 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/property.dart';
+import '../widgets/global_user_dp.dart'; // Import the new widget
 import 'details_screen.dart';
 import 'chat_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool isUploading;
+  final VoidCallback onDPClick;
+  const HomeScreen({super.key, this.isUploading = false, required this.onDPClick});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -22,11 +25,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadAI();
   }
 
-  void _loadAI() async {
+  Future<void> _loadAI() async {
     var snap = await FirebaseFirestore.instance.collection('users').doc(myId).collection('preferences').get();
     Map<String, int> temp = {};
     for (var doc in snap.docs) { temp[doc.id] = doc.data()['views'] ?? 0; }
     if (mounted) setState(() => _userPrefs = temp);
+  }
+
+  void _toggleSave(String propertyId, bool isCurrentlySaved) async {
+    var ref = FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(propertyId);
+    isCurrentlySaved ? await ref.delete() : await ref.set({'savedAt': Timestamp.now()});
   }
 
   @override
@@ -34,72 +42,86 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('properties').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.white));
-          List<Property> props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
-          props.sort((a, b) => (_userPrefs[b.houseType] ?? 0).compareTo(_userPrefs[a.houseType] ?? 0));
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: const Text("EstateTech", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(icon: const Icon(Icons.auto_awesome, color: Colors.amber), onPressed: _loadAI),
+          // UPDATED: Global DP
+          Padding(
+            padding: const EdgeInsets.only(right: 15),
+            child: GlobalUserDP(radius: 16, onTap: widget.onDPClick),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _loadAI,
+            color: Colors.white,
+            backgroundColor: const Color(0xFF1B263B),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('properties').orderBy('createdAt', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.white));
+                List<Property> props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+                props.sort((a, b) => (_userPrefs[b.houseType] ?? 0).compareTo(_userPrefs[a.houseType] ?? 0));
 
-          return PageView.builder(
-            scrollDirection: Axis.vertical,
-            itemCount: props.length,
-            itemBuilder: (context, i) {
-              final item = props[i];
-              return Stack(children: [
-                SizedBox.expand(child: Image.network(item.imageUrl, fit: BoxFit.cover)),
-                Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.8)]))),
-
-                Positioned(top: 60, left: 20, child: Row(children: [
-                  CircleAvatar(radius: 18, backgroundImage: NetworkImage(item.sellerPhoto)),
-                  const SizedBox(width: 10),
-                  Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ])),
-
-                Positioned(
-                  bottom: 50, left: 20, right: 90,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(item.houseType.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
-                    Text(item.location, style: const TextStyle(color: Colors.white70, fontSize: 18)),
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      const Icon(Icons.king_bed_outlined, color: Colors.white70, size: 18),
-                      Text(" ${item.rooms}bd  •  ", style: const TextStyle(color: Colors.white70)),
-                      const Icon(Icons.square_foot, color: Colors.white70, size: 18),
-                      Text(" ${item.sqft} sqft", style: const TextStyle(color: Colors.white70)),
-                    ]),
-                    const SizedBox(height: 15),
-                    Text('Monthly: \$${item.monthlyPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('Full Price: \$${(item.totalPrice / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300)),
-                    const SizedBox(height: 20),
-                    ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))), style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2)), child: const Text("Property Details", style: TextStyle(color: Colors.white))),
-                  ]),
-                ),
-
-                Positioned(
-                  bottom: 60, right: 20,
-                  child: Column(children: [
-                    StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(item.id).snapshots(),
-                        builder: (context, saveSnap) {
-                          bool isSaved = saveSnap.hasData && saveSnap.data!.exists;
-                          return _side(isSaved ? Icons.bookmark : Icons.bookmark_border, "Save", () async {
-                            var ref = FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(item.id);
-                            isSaved ? await ref.delete() : await ref.set({'savedAt': Timestamp.now()});
-                          }, isSaved ? Colors.amber : Colors.white);
-                        }
-                    ),
-                    const SizedBox(height: 25),
-                    _side(Icons.chat_bubble_outline, "Chat", () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: item.sellerId, propertyId: item.id))), Colors.white),
-                    const SizedBox(height: 25),
-                    _side(Icons.share_outlined, "Share", () => Share.share('Check out this ${item.houseType}!'), Colors.white),
-                  ]),
-                )
-              ]);
-            },
-          );
-        },
+                return PageView.builder(
+                  scrollDirection: Axis.vertical,
+                  itemCount: props.length,
+                  itemBuilder: (context, i) {
+                    final item = props[i];
+                    return Stack(children: [
+                      SizedBox.expand(child: Image.network(item.imageUrl, fit: BoxFit.cover)),
+                      Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.8)]))),
+                      Positioned(top: 100, left: 20, child: Row(children: [
+                        CircleAvatar(radius: 18, backgroundImage: NetworkImage(item.sellerPhoto)),
+                        const SizedBox(width: 10),
+                        Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ])),
+                      Positioned(bottom: 50, left: 20, right: 90, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(item.houseType.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                        Text(item.location, style: const TextStyle(color: Colors.white70, fontSize: 18)),
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          const Icon(Icons.king_bed_outlined, color: Colors.white70, size: 18),
+                          Text(" ${item.rooms}bd  •  ", style: const TextStyle(color: Colors.white70)),
+                          const Icon(Icons.square_foot, color: Colors.white70, size: 18),
+                          Text(" ${item.sqft} sqft", style: const TextStyle(color: Colors.white70)),
+                        ]),
+                        const SizedBox(height: 15),
+                        Text('Monthly: \$${item.monthlyPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Full Price: \$${(item.totalPrice / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300)),
+                        const SizedBox(height: 20),
+                        ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))), style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2)), child: const Text("Property Details", style: TextStyle(color: Colors.white))),
+                      ])),
+                      Positioned(bottom: 60, right: 20, child: Column(children: [
+                        StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(item.id).snapshots(),
+                            builder: (context, saveSnap) {
+                              bool isSaved = saveSnap.hasData && saveSnap.data!.exists;
+                              return _side(isSaved ? Icons.bookmark : Icons.bookmark_border, "Save", () => _toggleSave(item.id, isSaved), isSaved ? Colors.amber : Colors.white);
+                            }
+                        ),
+                        const SizedBox(height: 25),
+                        _side(Icons.chat_bubble_outline, "Chat", () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: item.sellerId, propertyId: item.id))), Colors.white),
+                        const SizedBox(height: 25),
+                        _side(Icons.share_outlined, "Share", () => Share.share('Check out this ${item.houseType}!'), Colors.white),
+                      ]))
+                    ]);
+                  },
+                );
+              },
+            ),
+          ),
+          if (widget.isUploading)
+            Positioned(top: 0, left: 0, right: 0, child: Container(color: Colors.black.withOpacity(0.8), padding: const EdgeInsets.only(top: 50, bottom: 10), child: const Column(children: [
+              LinearProgressIndicator(backgroundColor: Colors.transparent, color: Colors.blueAccent),
+              SizedBox(height: 5),
+              Text("Publishing listing...", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            ]))),
+        ],
       ),
     );
   }

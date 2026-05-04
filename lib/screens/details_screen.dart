@@ -33,15 +33,21 @@ class _DetailsScreenState extends State<DetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
         actions: [
+          // CLOUD-SYNCED SAVE BUTTON
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(widget.property.id).snapshots(),
             builder: (context, snapshot) {
               bool isSaved = snapshot.hasData && snapshot.data!.exists;
               return IconButton(
-                icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: isSaved ? Colors.amber : Colors.white, size: 28),
+                icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: isSaved ? Colors.amber : Colors.white, size: 28),
                 onPressed: () async {
                   var ref = FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(widget.property.id);
-                  isSaved ? await ref.delete() : await ref.set({'savedAt': Timestamp.now()});
+                  if (isSaved) {
+                    await ref.delete();
+                  } else {
+                    await ref.set({'savedAt': Timestamp.now()});
+                  }
                 },
               );
             },
@@ -59,31 +65,29 @@ class _DetailsScreenState extends State<DetailsScreen> {
             ))
           ]),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.property.houseType.toUpperCase(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black)),
-              Text(widget.property.location, style: const TextStyle(color: Colors.grey, fontSize: 18)),
+              Text(widget.property.houseType.toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Text(widget.property.houseType, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(widget.property.location, style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 20),
-              Text("\$${widget.property.monthlyPrice.toStringAsFixed(0)} / month", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)),
+              Text('\$${widget.property.monthlyPrice.toStringAsFixed(0)} / mo', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)),
               const SizedBox(height: 30),
+
               const Text("Property Features", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               Wrap(spacing: 20, runSpacing: 20, children: [
                 _feat(Icons.king_bed_outlined, "${widget.property.rooms} Rooms"),
                 _feat(Icons.bathtub_outlined, "${widget.property.baths} Baths"),
-                _feat(Icons.kitchen_outlined, "${widget.property.wetKitchen} Wet Kitchen"),
-                _feat(Icons.soup_kitchen_outlined, "${widget.property.dryKitchen} Dry Kitchen"),
-                _feat(Icons.chair_outlined, "${widget.property.livingRoom} Living Room"),
+                _feat(Icons.square_foot, "${widget.property.sqft} Sqft"),
               ]),
+
               const SizedBox(height: 30),
-              const Text("About this property", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Text(widget.property.description, style: const TextStyle(fontSize: 16, height: 1.5)),
-              const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id))),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 60)),
-                child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 55)),
+                child: const Text("Message Landlord", style: TextStyle(color: Colors.white)),
               )
             ]),
           )

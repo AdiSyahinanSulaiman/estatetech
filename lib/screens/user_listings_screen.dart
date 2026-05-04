@@ -10,34 +10,59 @@ class UserListingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? myId = FirebaseAuth.instance.currentUser?.uid;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("My Listings"), elevation: 0, backgroundColor: Colors.white),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('properties').where('sellerId', isEqualTo: myId).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
-          return ListView.builder(
-            itemCount: docs.length,
-            padding: const EdgeInsets.all(15),
-            itemBuilder: (context, index) {
-              final item = Property.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
-              return Card(
-                color: Colors.white,
-                margin: const EdgeInsets.only(bottom: 15),
-                child: ListTile(
-                  leading: Image.network(item.imageUrl, width: 50, height: 50, fit: BoxFit.cover),
-                  // FIXED: houseType and monthlyPrice
-                  title: Text(item.houseType, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("\$${item.monthlyPrice} / mo"),
-                  trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('properties').doc(item.id).delete()),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))),
-                ),
-              );
-            },
-          );
-        },
+    double width = MediaQuery.of(context).size.width;
+    double responsiveRatio = width < 600 ? 0.65 : 1.2;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('properties').where('sellerId', isEqualTo: myId).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text("No listings yet.")));
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(8),
+          physics: const NeverScrollableScrollPhysics(), // ALLOWS PARENT TO SCROLL
+          shrinkWrap: true,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8,
+            childAspectRatio: responsiveRatio,
+          ),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final item = Property.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
+            return _buildCompactCard(context, item, isOwner: true);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactCard(BuildContext context, Property item, {required bool isOwner}) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => DetailsScreen(property: item))),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(children: [
+              ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(10)), child: Image.network(item.imageUrl, height: 70, width: double.infinity, fit: BoxFit.cover)),
+              if (isOwner) Positioned(top: 2, right: 2, child: GestureDetector(onTap: () => FirebaseFirestore.instance.collection('properties').doc(item.id).delete(), child: CircleAvatar(radius: 10, backgroundColor: Colors.white.withOpacity(0.8), child: const Icon(Icons.close, color: Colors.red, size: 12)))),
+            ]),
+            Padding(
+              padding: const EdgeInsets.all(5.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.houseType, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), maxLines: 1),
+                  Text(item.location, style: const TextStyle(color: Colors.grey, fontSize: 9), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text("\$${item.monthlyPrice.toStringAsFixed(0)}/mo", style: const TextStyle(color: Color(0xFF1B263B), fontWeight: FontWeight.bold, fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

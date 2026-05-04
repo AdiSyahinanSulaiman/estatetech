@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../widgets/global_user_dp.dart'; // Add this
 
 class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({super.key});
+  final VoidCallback onDPClick;
+  const CalculatorScreen({super.key, required this.onDPClick});
   @override
   State<CalculatorScreen> createState() => _CalculatorScreenState();
 }
@@ -15,7 +17,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: Text(step == 0 ? "Financing" : "Calculator"), backgroundColor: Colors.white, elevation: 0),
+      appBar: AppBar(
+        title: Text(step == 0 ? "Financing" : "Calculator"),
+        backgroundColor: Colors.white, elevation: 0,
+        actions: [
+          // UPDATED: Global DP
+          Padding(
+            padding: const EdgeInsets.only(right: 15),
+            child: GlobalUserDP(radius: 16, onTap: widget.onDPClick),
+          ),
+        ],
+      ),
       body: step == 0 ? _buildIntro() : _buildCalc(),
     );
   }
@@ -32,7 +44,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         const Spacer(),
         ElevatedButton(
           onPressed: () => setState(() => step = 1),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700], minimumSize: const Size(double.infinity, 55)),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B), minimumSize: const Size(double.infinity, 55)),
           child: const Text("Get started", style: TextStyle(color: Colors.white)),
         )
       ]),

@@ -10,6 +10,7 @@ import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
+
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -17,6 +18,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   String userRole = 'Loading';
+  bool _isUploadingListing = false;
 
   @override
   void initState() {
@@ -25,49 +27,62 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _getUserRole() async {
-    var doc = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).get();
-    if (mounted) setState(() => userRole = doc.data()?['role'] ?? 'Tenant');
+    var doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser?.uid)
+        .get();
+
+    if (mounted) {
+      setState(() {
+        userRole = doc.data()?['role'] ?? 'Tenant';
+      });
+    }
   }
 
-  // Function to switch tabs programmatically
-  void _jumpToHome() {
+  // Navigation Helpers
+  void _goToProfile() => setState(() => _selectedIndex = 4);
+  void _handlePostStart() => setState(() => _isUploadingListing = true);
+  void _handlePostComplete() {
     setState(() {
-      _selectedIndex = 0;
+      _isUploadingListing = false;
+      _selectedIndex = 0; // Go to Home after posting
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (userRole == 'Loading') return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (userRole == 'Loading') {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF1B263B))));
+    }
 
+    // REMOVED 'const' from this list to fix your red lines
     final List<Widget> _pages = [
-      const HomeScreen(),
-      const ExploreScreen(),
-      // We pass the jump function to the Add screen here
+      HomeScreen(isUploading: _isUploadingListing, onDPClick: _goToProfile),
+      ExploreScreen(onDPClick: _goToProfile),
       userRole == 'Landlord'
-          ? AddPostScreen(onPostComplete: _jumpToHome)
-          : const CalculatorScreen(),
-      const MessagesScreen(),
-      const ProfileScreen(),
+          ? AddPostScreen(onPostStart: _handlePostStart, onPostComplete: _handlePostComplete)
+          : CalculatorScreen(onDPClick: _goToProfile),
+      MessagesScreen(onDPClick: _goToProfile),
+      ProfileScreen(), // No 'const' here because it's dynamic
     ];
 
     return Scaffold(
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
+        onTap: (index) => setState(() => _selectedIndex = index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.black,
+        selectedItemColor: const Color(0xFF1B263B),
         unselectedItemColor: Colors.grey,
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
           const BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
           BottomNavigationBarItem(
-              icon: Icon(userRole == 'Landlord' ? Icons.add_box : Icons.calculate),
-              label: userRole == 'Landlord' ? 'Add' : 'Calculate'
+            icon: Icon(userRole == 'Landlord' ? Icons.add_box_outlined : Icons.calculate_outlined),
+            label: userRole == 'Landlord' ? 'Add' : 'Calculate',
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
     );
