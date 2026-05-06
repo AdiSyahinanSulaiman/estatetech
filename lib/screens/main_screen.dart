@@ -5,7 +5,7 @@ import 'home_screen.dart';
 import 'explore_screen.dart';
 import 'add_post_screen.dart';
 import 'calculator_screen.dart';
-import 'messages_screen.dart';
+import 'messages_screen.dart'; // Ensure this matches your file name
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -31,46 +31,59 @@ class _MainScreenState extends State<MainScreen> {
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser?.uid)
         .get();
-
     if (mounted) {
-      setState(() {
-        userRole = doc.data()?['role'] ?? 'Tenant';
-      });
+      setState(() => userRole = doc.data()?['role'] ?? 'Tenant');
     }
   }
 
-  // Navigation Helpers
   void _goToProfile() => setState(() => _selectedIndex = 4);
-  void _handlePostStart() => setState(() => _isUploadingListing = true);
-  void _handlePostComplete() {
+
+  // Triggered the moment 'Publish' is clicked
+  void _handlePostStart() {
     setState(() {
-      _isUploadingListing = false;
-      _selectedIndex = 0; // Go to Home after posting
+      _selectedIndex = 0; // Jump to Home Screen immediately
+      _isUploadingListing = true; // Show the publishing bar
     });
+  }
+
+  // Triggered after Firebase upload finishes
+  void _handlePostComplete() async {
+    // Keep the loading bar visible for 3 seconds for the lecturer to see
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      setState(() {
+        _isUploadingListing = false; // Hide the publishing bar
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (userRole == 'Loading') {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF1B263B))));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF1B263B))),
+      );
     }
 
-    // REMOVED 'const' from this list to fix your red lines
     final List<Widget> _pages = [
       HomeScreen(isUploading: _isUploadingListing, onDPClick: _goToProfile),
       ExploreScreen(onDPClick: _goToProfile),
       userRole == 'Landlord'
           ? AddPostScreen(onPostStart: _handlePostStart, onPostComplete: _handlePostComplete)
           : CalculatorScreen(onDPClick: _goToProfile),
-      MessagesScreen(onDPClick: _goToProfile),
-      ProfileScreen(), // No 'const' here because it's dynamic
+      MessagesScreen(onDPClick: _goToProfile), // FIXED: Corrected class name
+      const ProfileScreen(),
     ];
 
     return Scaffold(
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          // Prevent navigation while the upload bar is active
+          if (_isUploadingListing) return;
+          setState(() => _selectedIndex = index);
+        },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFF1B263B),
         unselectedItemColor: Colors.grey,

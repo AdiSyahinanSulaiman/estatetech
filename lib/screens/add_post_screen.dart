@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Required for Storage
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:math';
 
@@ -28,6 +28,9 @@ class _AddPostScreenState extends State<AddPostScreen> {
   int rooms = 0, baths = 0, wetK = 0, dryK = 0, livingR = 0;
   final Color navy = const Color(0xFF1B263B);
 
+  // Anti-Double-Click Variable
+  bool _isProcessing = false;
+
   final List<String> _autoPhotos = [
     'https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1000',
     'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1000',
@@ -40,26 +43,32 @@ class _AddPostScreenState extends State<AddPostScreen> {
   }
 
   Future<void> _submit() async {
-    if (_loc.text.isEmpty || _monthP.text.isEmpty) return;
+    // 1. Basic Validation
+    if (_loc.text.isEmpty || _monthP.text.isEmpty || _totalP.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill in required fields")));
+      return;
+    }
 
-    widget.onPostStart(); // Show loading bar on Home
-    widget.onPostComplete(); // Move to Home immediately
+    // 2. Prevent double-click and start loading logic
+    setState(() => _isProcessing = true);
+
+    // Trigger the bar on Home Screen and navigate there instantly
+    widget.onPostStart();
 
     try {
       String uid = FirebaseAuth.instance.currentUser!.uid;
       var user = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       String name = user.data()?['name'] ?? "Landlord";
 
-      // Handle Image Upload
+      // 3. Handle Image Upload
       String finalImg = _autoPhotos[Random().nextInt(_autoPhotos.length)];
       if (_pickedImage != null) {
-        // FIXED: millisecondsSinceEpoch
         var ref = FirebaseStorage.instance.ref().child('properties').child('${DateTime.now().millisecondsSinceEpoch}.jpg');
         await ref.putFile(_pickedImage!);
         finalImg = await ref.getDownloadURL();
       }
 
-      // Save to Firestore
+      // 4. Save to Firestore
       await FirebaseFirestore.instance.collection('properties').add({
         'houseType': _type,
         'location': _loc.text.trim(),
@@ -74,13 +83,19 @@ class _AddPostScreenState extends State<AddPostScreen> {
         'livingRoom': livingR,
         'sellerId': uid,
         'sellerName': name,
-        'sellerPhoto': "https://ui-avatars.com/api/?name=$name&background=0D8ABC&color=fff",
+        'sellerPhoto': "https://ui-avatars.com/api/?name=$name&background=1B263B&color=fff",
         'imageUrl': finalImg,
         'virtualTourUrl': _tourUrlController.text.isNotEmpty ? _tourUrlController.text.trim() : 'https://images.pexels.com/photos/12148587/pexels-photo-12148587.jpeg',
         'createdAt': Timestamp.now(),
       });
+
+      // 5. Success! Now tell MainScreen to start the 3-second countdown to hide the bar
+      widget.onPostComplete();
+
     } catch (e) {
       print("Error publishing: $e");
+      // Reset processing if it fails so user can try again
+      setState(() => _isProcessing = false);
     }
   }
 
@@ -88,14 +103,19 @@ class _AddPostScreenState extends State<AddPostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Post New Listing", style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text("Post New Listing", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _isProcessing ? null : _pickImage,
               child: Container(
                 width: double.infinity, height: 180,
                 decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey[300]!)),
@@ -106,7 +126,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
             ),
             const SizedBox(height: 25),
 
-            // NAVY 360 BOX
             const Text("Virtual 360° Tour (Optional)", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Container(
@@ -118,7 +137,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text("Add 360° Virtual Tour", style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
                   const SizedBox(height: 5),
-                  TextField(controller: _tourUrlController, decoration: InputDecoration(hintText: "Paste 360 link here", filled: true, fillColor: Colors.white, isDense: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none))),
+                  TextField(controller: _tourUrlController, enabled: !_isProcessing, decoration: InputDecoration(hintText: "Paste 360 link here", filled: true, fillColor: Colors.white, isDense: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none))),
                 ])),
               ]),
             ),
@@ -127,21 +146,21 @@ class _AddPostScreenState extends State<AddPostScreen> {
             DropdownButtonFormField<String>(
               value: _type,
               items: ['Detached', 'Semi-Detached', 'Apartment', 'Terrace', 'Bungalow'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (v) => setState(() => _type = v!),
+              onChanged: _isProcessing ? null : (v) => setState(() => _type = v!),
               decoration: const InputDecoration(labelText: "Property Type", border: OutlineInputBorder()),
             ),
             const SizedBox(height: 15),
-            TextField(controller: _loc, decoration: const InputDecoration(labelText: "Location", border: OutlineInputBorder())),
+            TextField(controller: _loc, enabled: !_isProcessing, decoration: const InputDecoration(labelText: "Location", border: OutlineInputBorder())),
             const SizedBox(height: 15),
             Row(children: [
-              Expanded(child: TextField(controller: _monthP, decoration: const InputDecoration(labelText: "Monthly \$", border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              Expanded(child: TextField(controller: _monthP, enabled: !_isProcessing, decoration: const InputDecoration(labelText: "Monthly \$", border: OutlineInputBorder()), keyboardType: TextInputType.number)),
               const SizedBox(width: 10),
-              Expanded(child: TextField(controller: _sqft, decoration: const InputDecoration(labelText: "Sqft Area", border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              Expanded(child: TextField(controller: _sqft, enabled: !_isProcessing, decoration: const InputDecoration(labelText: "Sqft Area", border: OutlineInputBorder()), keyboardType: TextInputType.number)),
             ]),
             const SizedBox(height: 15),
-            TextField(controller: _totalP, decoration: const InputDecoration(labelText: "Full Property Price \$", border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            TextField(controller: _totalP, enabled: !_isProcessing, decoration: const InputDecoration(labelText: "Full Property Price \$", border: OutlineInputBorder()), keyboardType: TextInputType.number),
             const SizedBox(height: 15),
-            TextField(controller: _desc, maxLines: 2, decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder())),
+            TextField(controller: _desc, enabled: !_isProcessing, maxLines: 2, decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder())),
             const SizedBox(height: 25),
 
             const Text("Property Features", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -152,7 +171,20 @@ class _AddPostScreenState extends State<AddPostScreen> {
             _count("Living Room", livingR, (v) => setState(() => livingR = v)),
             const SizedBox(height: 30),
 
-            ElevatedButton(onPressed: _submit, style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 60), backgroundColor: navy), child: const Text("Publish Listing", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+            // BUTTON: Disables when processing
+            ElevatedButton(
+                onPressed: _isProcessing ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 60),
+                    backgroundColor: navy,
+                    disabledBackgroundColor: Colors.grey,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                ),
+                child: Text(
+                    _isProcessing ? "Publishing..." : "Publish Listing",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                )
+            ),
             const SizedBox(height: 30),
           ],
         ),
@@ -160,5 +192,5 @@ class _AddPostScreenState extends State<AddPostScreen> {
     );
   }
 
-  Widget _count(String l, int v, Function(int) c) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l), Row(children: [IconButton(onPressed: () => c(v > 0 ? v - 1 : 0), icon: Icon(Icons.remove_circle_outline, color: navy)), Text("$v", style: const TextStyle(fontWeight: FontWeight.bold)), IconButton(onPressed: () => c(v + 1), icon: Icon(Icons.add_circle_outline, color: navy))])]);
+  Widget _count(String l, int v, Function(int) c) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l), Row(children: [IconButton(onPressed: _isProcessing ? null : () => c(v > 0 ? v - 1 : 0), icon: Icon(Icons.remove_circle_outline, color: navy)), Text("$v", style: const TextStyle(fontWeight: FontWeight.bold)), IconButton(onPressed: _isProcessing ? null : () => c(v + 1), icon: Icon(Icons.add_circle_outline, color: navy))])]);
 }

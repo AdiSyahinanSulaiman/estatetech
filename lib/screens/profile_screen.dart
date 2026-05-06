@@ -8,6 +8,7 @@ import 'user_listings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'search_users_screen.dart';
 import 'users_list_screen.dart';
+import 'chat_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -172,8 +173,6 @@ class ContactedLandlordsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      // MENTOR TIP: Removed .orderBy() to prevent buffering.
-      // To add it back, check your Debug Console for a link to create an index.
       stream: FirebaseFirestore.instance
           .collection('chats')
           .where('users', arrayContains: currentUserId)
@@ -191,16 +190,39 @@ class ContactedLandlordsTab extends StatelessWidget {
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             var chat = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-              child: ListTile(
-                leading: const CircleAvatar(backgroundColor: Color(0xFF1B263B), child: Icon(Icons.person, color: Colors.white)),
-                title: Text(chat['landlordName'] ?? "Landlord"),
-                subtitle: Text(chat['lastMessage'] ?? "New Inquiry", maxLines: 1),
-                trailing: const Icon(Icons.chevron_right),
-              ),
+
+            // Find the Partner (The person you are NOT)
+            List users = chat['users'];
+            String partnerId = users.firstWhere((id) => id != currentUserId);
+
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
+              builder: (context, userSnap) {
+                if (!userSnap.hasData) return const SizedBox();
+                var partnerData = userSnap.data!.data() as Map<String, dynamic>?;
+                String partnerName = partnerData?['name'] ?? "User";
+                String partnerPhoto = partnerData?['photoUrl'] ?? "";
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF1B263B),
+                      backgroundImage: partnerPhoto.isNotEmpty
+                          ? NetworkImage(partnerPhoto)
+                          : NetworkImage("https://ui-avatars.com/api/?name=$partnerName&background=random") as ImageProvider,
+                    ),
+                    title: Text(partnerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(chat['lastMessage'] ?? "New Inquiry", maxLines: 1),
+                    trailing: const Icon(Icons.chevron_right, size: 18),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId)));
+                    },
+                  ),
+                );
+              },
             );
           },
         );
@@ -254,7 +276,7 @@ class BookedViewingsTab extends StatelessWidget {
   }
 }
 
-  class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
   final TabBar _tabBar;
   @override double get minExtent => _tabBar.preferredSize.height;

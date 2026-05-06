@@ -24,14 +24,32 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   void _trackAI() async {
+    // Keep your original views tracking
     await FirebaseFirestore.instance.collection('users').doc(myId).collection('preferences').doc(widget.property.houseType).set({'views': FieldValue.increment(1)}, SetOptions(merge: true));
+
+    // NEW AI LOGIC: Update user's mathematical preference vector
+    DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(myId);
+    FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot snap = await transaction.get(userRef);
+      if (!snap.exists) return;
+      Map<String, dynamic> data = snap.data() as Map<String, dynamic>;
+      double oldP = (data['avgPrice'] ?? widget.property.monthlyPrice).toDouble();
+      double oldR = (data['avgRooms'] ?? widget.property.rooms).toDouble();
+      double oldS = (data['avgSqft'] ?? widget.property.sqft).toDouble();
+      int count = data['interactionCount'] ?? 0;
+      transaction.update(userRef, {
+        'avgPrice': (oldP * count + widget.property.monthlyPrice) / (count + 1),
+        'avgRooms': (oldR * count + widget.property.rooms) / (count + 1),
+        'avgSqft': (oldS * count + widget.property.sqft) / (count + 1),
+        'interactionCount': count + 1,
+      });
+    });
   }
 
   void _startChat() async {
     List<String> ids = [myId, widget.property.sellerId];
     ids.sort();
     String chatId = ids.join("_");
-
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'users': [myId, widget.property.sellerId],
       'lastMessage': 'Interested in ${widget.property.houseType}',
@@ -40,7 +58,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
       'tenantId': myId,
       'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-
     if (mounted) {
       Navigator.push(context, MaterialPageRoute(builder: (context) =>
           ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id)));
@@ -66,7 +83,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Viewing Booked!")));
       }
@@ -100,16 +116,38 @@ class _DetailsScreenState extends State<DetailsScreen> {
               const SizedBox(height: 20),
               Text('\$${widget.property.monthlyPrice.toStringAsFixed(0)} / mo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: navyBlue)),
               const SizedBox(height: 30),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                _feat(Icons.king_bed_outlined, "${widget.property.rooms} Rooms"),
-                _feat(Icons.bathtub_outlined, "${widget.property.baths} Baths"),
-                _feat(Icons.square_foot, "${widget.property.sqft} Sqft"),
-              ]),
+
+              // Feature Grid
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _feat(Icons.king_bed_outlined, "${widget.property.rooms} Rooms"),
+                        _feat(Icons.bathtub_outlined, "${widget.property.baths} Baths"),
+                        _feat(Icons.square_foot, "${widget.property.sqft} Sqft"),
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _feat(Icons.chair_outlined, "${widget.property.livingRoom} Living"),
+                        _feat(Icons.countertops_outlined, "${widget.property.wetKitchen} Wet Kit"),
+                        _feat(Icons.kitchen_outlined, "${widget.property.dryKitchen} Dry Kit"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 40),
               Row(children: [
-                Expanded(child: ElevatedButton(onPressed: _startChat, style: ElevatedButton.styleFrom(backgroundColor: navyBlue, minimumSize: const Size(0, 55)), child: const Text("Message Landlord", style: TextStyle(color: Colors.white)))),
+                Expanded(child: ElevatedButton(onPressed: _startChat, style: ElevatedButton.styleFrom(backgroundColor: navyBlue, minimumSize: const Size(0, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Message Landlord", style: TextStyle(color: Colors.white)))),
                 const SizedBox(width: 10),
-                Expanded(child: OutlinedButton(onPressed: _bookViewing, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 55), side: BorderSide(color: navyBlue)), child: Text("Book Viewing", style: TextStyle(color: navyBlue)))),
+                Expanded(child: OutlinedButton(onPressed: _bookViewing, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 55), side: BorderSide(color: navyBlue), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("Book Viewing", style: TextStyle(color: navyBlue)))),
               ]),
             ]),
           )
@@ -117,5 +155,5 @@ class _DetailsScreenState extends State<DetailsScreen> {
       ),
     );
   }
-  Widget _feat(IconData icon, String label) => Column(children: [Icon(icon, color: navyBlue), Text(label, style: const TextStyle(color: Colors.grey))]);
+  Widget _feat(IconData icon, String label) => Column(children: [Icon(icon, color: Colors.black54), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11))]);
 }
