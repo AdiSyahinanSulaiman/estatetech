@@ -12,6 +12,32 @@ class MessagesScreen extends StatelessWidget {
     await Future.delayed(const Duration(seconds: 1));
   }
 
+  // --- MASTER DELETE CHAT LOGIC ---
+  void _showDeleteDialog(BuildContext context, String partnerId, String partnerName) {
+    final String myId = FirebaseAuth.instance.currentUser!.uid;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Conversation?"),
+        content: Text("Remove all messages with $partnerName?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                List<String> ids = [myId, partnerId];
+                ids.sort();
+                String chatId = ids.join("_");
+                await FirebaseFirestore.instance.collection('chats').doc(chatId).delete();
+              },
+              child: const Text("Delete", style: TextStyle(color: Colors.red))
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String myId = FirebaseAuth.instance.currentUser!.uid;
@@ -20,80 +46,50 @@ class MessagesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text("EstateTech",
-            style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 15),
-            child: GlobalUserDP(radius: 18, onTap: onDPClick),
-          )
-        ],
+        backgroundColor: Colors.white, elevation: 0,
+        title: const Text("Messages", style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
+        actions: [Padding(padding: const EdgeInsets.only(right: 15), child: GlobalUserDP(radius: 18, onTap: onDPClick))],
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: navyBlue,
         child: Column(
           children: [
-            // 1. SEARCH BAR
             Padding(
               padding: const EdgeInsets.all(15),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 15),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const TextField(
-                  decoration: InputDecoration(
-                    icon: Icon(Icons.search, color: Colors.grey),
-                    hintText: "Search conversations...",
-                    border: InputBorder.none,
-                  ),
-                ),
+                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15)),
+                child: const TextField(decoration: InputDecoration(icon: Icon(Icons.search, color: Colors.grey), hintText: "Search conversations...", border: InputBorder.none)),
               ),
             ),
-
-            // 2. CONVERSATIONS LIST
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('messages').orderBy('timestamp', descending: true).snapshots(),
+                stream: FirebaseFirestore.instance.collection('chats').where('users', arrayContains: myId).snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No messages yet."));
 
-                  Map<String, Map<String, dynamic>> conversations = {};
-                  for (var doc in snapshot.data!.docs) {
-                    var d = doc.data() as Map<String, dynamic>;
-                    String partnerId = d['senderId'] == myId ? d['receiverId'] : d['senderId'];
-
-                    if (d['senderId'] == myId || d['receiverId'] == myId) {
-                      if (!conversations.containsKey(partnerId)) {
-                        conversations[partnerId] = d;
-                      }
-                    }
-                  }
-
-                  if (conversations.isEmpty) return const Center(child: Text("No messages yet."));
-
-                  return ListView(
+                  return ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: conversations.entries.map((entry) {
-                      String partnerId = entry.key;
-                      var lastMsg = entry.value;
+                    itemCount: snapshot.data!.docs.length,
+                    itemBuilder: (context, index) {
+                      var chatData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                      List users = chatData['users'] ?? [];
+                      String partnerId = users.firstWhere((id) => id != myId, orElse: () => "");
+                      String? propertyId = chatData['propertyId'];
 
                       return FutureBuilder<DocumentSnapshot>(
                         future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
                         builder: (context, userSnap) {
-                          if (!userSnap.hasData || !userSnap.data!.exists) return const SizedBox();
+                          if (!userSnap.hasData) return const SizedBox();
                           var userData = userSnap.data!.data() as Map<String, dynamic>?;
                           String name = userData?['name'] ?? "User";
-                          String photo = userData?['photoUrl'] ?? "";
 
-                          return _buildConversationTile(context, name, partnerId, lastMsg, myId, photo);
+                          return _buildConversationTile(context, name, partnerId, chatData, propertyId);
                         },
                       );
-                    }).toList(),
+                    },
                   );
                 },
               ),
@@ -104,40 +100,49 @@ class MessagesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildConversationTile(BuildContext context, String name, String partnerId, Map<String, dynamic> lastMsg, String myId, String photo) {
+  Widget _buildConversationTile(BuildContext context, String name, String partnerId, Map<String, dynamic> chatData, String? propertyId) {
     return Column(
       children: [
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId, propertyId: propertyId))),
+          onLongPress: () => _showDeleteDialog(context, partnerId, name),
+
+          // --- THE HOUSE BACKGROUND + DP STACK ---
           leading: SizedBox(
             width: 65, height: 60,
             child: Stack(
               children: [
+                // 1. Bottom Layer: The actual Property Image the user is interested in
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=200", width: 55, height: 55, fit: BoxFit.cover),
+                  borderRadius: BorderRadius.circular(12),
+                  child: propertyId != null
+                      ? FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('properties').doc(propertyId).get(),
+                    builder: (context, propSnap) {
+                      String imgUrl = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=200"; // Placeholder
+                      if (propSnap.hasData && propSnap.data!.exists) {
+                        imgUrl = (propSnap.data!.data() as Map<String, dynamic>)['imageUrl'];
+                      }
+                      return Image.network(imgUrl, width: 55, height: 55, fit: BoxFit.cover);
+                    },
+                  )
+                      : Image.network("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=200", width: 55, height: 55, fit: BoxFit.cover),
                 ),
+                // 2. Top Layer: The small Partner DP on the bottom right
                 Positioned(
                   bottom: 0, right: 0,
-                  child: CircleAvatar(
-                    radius: 12, backgroundColor: Colors.white,
-                    child: CircleAvatar(
-                      radius: 10,
-                      backgroundImage: photo.isNotEmpty
-                          ? NetworkImage(photo)
-                          : NetworkImage("https://ui-avatars.com/api/?name=$name&background=1B263B&color=fff") as ImageProvider,
-                    ),
+                  child: Container(
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                    child: GlobalUserDP(radius: 12, userId: partnerId),
                   ),
                 ),
               ],
             ),
           ),
+
           title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          subtitle: Text(
-            lastMsg['type'] == 'text' ? lastMsg['text'] : "Sent an attachment",
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-          ),
+          subtitle: Text(chatData['lastMessage'] ?? "New message", maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: const Text("Now", style: TextStyle(color: Colors.grey, fontSize: 12)),
         ),
         const Divider(height: 1, indent: 90),

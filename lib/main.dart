@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+import 'services/settings_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/main_screen.dart';
-import 'screens/verify_email_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const EstateTechApp());
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => SettingsProvider(),
+      child: const EstateTechApp(),
+    ),
+  );
 }
 
 class EstateTechApp extends StatelessWidget {
@@ -17,25 +22,31 @@ class EstateTechApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to the settings provider
+    final settings = Provider.of<SettingsProvider>(context);
+
     return MaterialApp(
+      title: 'EstateTech',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      // This Auth Wrapper determines which screen to show on startup
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            // User is logged in, but are they verified?
-            if (snapshot.data!.emailVerified) {
-              return const MainScreen();
-            } else {
-              return const VerifyEmailScreen();
-            }
-          }
-          // Not logged in
-          return const LoginScreen();
-        },
+
+      // --- DYNAMIC THEME LOGIC ---
+      themeMode: settings.themeMode,
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        colorSchemeSeed: const Color(0xFF1B263B),
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: const Color(0xFF1B263B),
+        scaffoldBackgroundColor: Colors.black,
+      ),
+
+      // --- DYNAMIC LANGUAGE LOGIC ---
+      locale: settings.locale,
+
+      home: const LoginScreen(),
     );
   }
 }

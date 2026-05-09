@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import '../widgets/global_user_dp.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String sellerId;
@@ -28,15 +29,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final AudioRecorder audioRecorder = AudioRecorder();
   final AudioPlayer audioPlayer = AudioPlayer();
 
-  bool _isTyping = false;
-  bool _isRecording = false;
+  bool _isTyping = false, _isRecording = false;
   int _recordDuration = 0;
   Timer? _timer;
-
-  // Audio Playback State
   String? _playingUrl;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero, _position = Duration.zero;
 
   @override
   void initState() {
@@ -44,7 +41,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _msgController.addListener(() {
       if (mounted) setState(() => _isTyping = _msgController.text.isNotEmpty);
     });
-    // Listen to audio progress for the slider
     audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
     audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
     audioPlayer.onPlayerComplete.listen((_) => setState(() { _playingUrl = null; _position = Duration.zero; }));
@@ -58,8 +54,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _msgController.dispose();
     super.dispose();
   }
-
-  // --- WHATSAPP LOGIC ---
 
   String _formatTimer(int seconds) {
     final mins = (seconds ~/ 60).toString();
@@ -99,16 +93,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _sendMessage(text: url, type: type);
   }
 
-  void _sendMessage({required String text, String type = 'text'}) {
+  void _sendMessage({required String text, String type = 'text'}) async {
     if (text.isEmpty) return;
-    FirebaseFirestore.instance.collection('messages').add({
+    await FirebaseFirestore.instance.collection('messages').add({
       'text': text, 'type': type, 'senderId': myId, 'receiverId': widget.sellerId,
-      'isRead': false, 'timestamp': Timestamp.now(),
+      'isRead': false, 'timestamp': FieldValue.serverTimestamp(),
     });
+    List<String> ids = [myId, widget.sellerId];
+    ids.sort();
+    await FirebaseFirestore.instance.collection('chats').doc(ids.join("_")).set({
+      'lastMessage': type == 'text' ? text : 'Sent an attachment',
+      'timestamp': FieldValue.serverTimestamp(),
+      'users': ids,
+    }, SetOptions(merge: true));
     _msgController.clear();
   }
-
-  // --- UI BUILDERS ---
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +120,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('messages').orderBy('timestamp', descending: true).snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox();
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final msgs = snapshot.data!.docs.where((doc) {
                 var d = doc.data() as Map<String, dynamic>;
                 return (d['senderId'] == myId && d['receiverId'] == widget.sellerId) || (d['senderId'] == widget.sellerId && d['receiverId'] == myId);
@@ -146,7 +145,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  // --- UPDATED: FETCH REAL NAME AND DP ---
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: const Color(0xFF1B263B), foregroundColor: Colors.white,
@@ -154,20 +152,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         future: FirebaseFirestore.instance.collection('users').doc(widget.sellerId).get(),
         builder: (context, snap) {
           String name = "User";
-          String photo = "";
           if (snap.hasData && snap.data!.exists) {
-            var data = snap.data!.data() as Map<String, dynamic>;
-            name = data['name'] ?? "User";
-            photo = data['photoUrl'] ?? "";
+            name = (snap.data!.data() as Map<String, dynamic>)['name'] ?? "User";
           }
           return Row(children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white24,
-              backgroundImage: photo.isNotEmpty
-                  ? NetworkImage(photo)
-                  : NetworkImage("https://ui-avatars.com/api/?name=$name&background=random") as ImageProvider,
-            ),
+            GlobalUserDP(radius: 18, userId: widget.sellerId),
             const SizedBox(width: 10),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -230,7 +219,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Widget _buildMediaContent(Map<String, dynamic> d, bool isMe) {
     Color tc = isMe ? Colors.white : Colors.black;
-    if (d['type'] == 'image') return GestureDetector(onTap: () => _viewImage(d['text']), child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(d['text'], width: 200)));
+    if (d['type'] == 'image') return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(d['text'], width: 200));
 
     if (d['type'] == 'audio') {
       bool isPlaying = _playingUrl == d['text'];
@@ -243,10 +232,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         else Text("Voice Note", style: TextStyle(color: tc)),
       ]);
     }
-
-    if (d['type'] == 'file') return InkWell(onTap: () => launchUrl(Uri.parse(d['text']), mode: LaunchMode.externalApplication), child: Row(children: [Icon(Icons.insert_drive_file, color: tc), const SizedBox(width: 8), const Text("View Document", style: TextStyle(decoration: TextDecoration.underline))]));
-    if (d['type'] == 'location') return InkWell(onTap: () => launchUrl(Uri.parse(d['text'])), child: const Text("📍 View Location", style: TextStyle(color: Colors.blue)));
-
     return Text(d['text'] ?? "", style: TextStyle(color: tc, fontSize: 16));
   }
 
@@ -262,8 +247,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             Expanded(child: _isRecording
                 ? Text("Recording: ${_formatTimer(_recordDuration)}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
                 : TextField(controller: _msgController, decoration: const InputDecoration(hintText: "Message", border: InputBorder.none, contentPadding: EdgeInsets.only(left: 10)))),
-            if (!_isRecording) IconButton(icon: const Icon(Icons.attach_file), onPressed: _showMenu),
-            if (!_isRecording && !_isTyping) IconButton(icon: const Icon(Icons.camera_alt), onPressed: () => _pickMedia(true)),
+            if (!_isRecording) IconButton(icon: const Icon(Icons.attach_file), onPressed: () {}),
+            if (!_isRecording && !_isTyping) IconButton(icon: const Icon(Icons.camera_alt), onPressed: () {}),
           ]),
         )),
         const SizedBox(width: 5),
@@ -273,33 +258,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       ]),
     );
-  }
-
-  void _showMenu() {
-    showModalBottomSheet(context: context, builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
-      ListTile(leading: const Icon(Icons.image), title: const Text("Gallery"), onTap: () { Navigator.pop(c); _pickMedia(false); }),
-      ListTile(leading: const Icon(Icons.file_present), title: const Text("Document"), onTap: () { Navigator.pop(c); _pickFile(); }),
-      ListTile(leading: const Icon(Icons.location_on), title: const Text("Location"), onTap: () {
-        Geolocator.getCurrentPosition().then((pos) {
-          _sendMessage(text: "https://www.google.com/maps/search/?api=1&query=${pos.latitude},${pos.longitude}", type: 'location');
-          Navigator.pop(c);
-        });
-      }),
-    ]));
-  }
-
-  void _pickMedia(bool cam) async {
-    final p = await ImagePicker().pickImage(source: cam ? ImageSource.camera : ImageSource.gallery, imageQuality: 50);
-    if (p != null) _uploadFile(File(p.path), 'image');
-  }
-
-  void _pickFile() async {
-    final r = await FilePicker.platform.pickFiles();
-    if (r != null) _uploadFile(File(r.files.single.path!), 'file');
-  }
-
-  void _viewImage(String url) {
-    showDialog(context: context, builder: (c) => Dialog.fullscreen(backgroundColor: Colors.black, child: Stack(children: [Center(child: Image.network(url)), Positioned(top: 40, left: 20, child: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(c)))])));
   }
 
   void _showDeleteDialog(String id) {

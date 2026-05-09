@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/property.dart';
-import '../widgets/global_user_dp.dart'; // Add this
+import '../widgets/global_user_dp.dart';
 import 'details_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -27,7 +27,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
         title: const Text("EstateTech", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         backgroundColor: Colors.white, elevation: 0,
         actions: [
-          // UPDATED: Global DP
           Padding(
             padding: const EdgeInsets.only(right: 15),
             child: GlobalUserDP(radius: 16, onTap: widget.onDPClick),
@@ -44,41 +43,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
           );
         }).toList())),
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('properties').orderBy('createdAt', descending: true).snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).where((p) {
-                bool matchesCat = selectedCategory == "All" || p.houseType == selectedCategory;
-                bool matchesSearch = p.location.toLowerCase().contains(searchQuery) || p.houseType.toLowerCase().contains(searchQuery);
-                return matchesCat && matchesSearch;
-              }).toList();
-              return GridView.builder(
-                padding: const EdgeInsets.all(8),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: responsiveRatio),
-                itemCount: props.length,
-                itemBuilder: (context, index) {
-                  final item = props[index];
-                  return GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => DetailsScreen(property: item))),
-                    child: Container(
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Stack(children: [
-                          ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(10)), child: Image.network(item.imageUrl, height: 70, width: double.infinity, fit: BoxFit.cover)),
-                          Positioned(top: 4, left: 4, child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)), child: Text(item.houseType, style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)))),
+          // --- ADDED REFRESHER HERE ---
+          child: RefreshIndicator(
+            onRefresh: () async => await Future.delayed(const Duration(seconds: 1)),
+            color: navy,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('properties').orderBy('createdAt', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).where((p) {
+                  bool matchesCat = selectedCategory == "All" || p.houseType == selectedCategory;
+                  bool matchesSearch = p.location.toLowerCase().contains(searchQuery) || p.houseType.toLowerCase().contains(searchQuery);
+                  return matchesCat && matchesSearch;
+                }).toList();
+
+                return GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(), // Important for Refresher
+                  padding: const EdgeInsets.all(8),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: responsiveRatio),
+                  itemCount: props.length,
+                  itemBuilder: (context, index) {
+                    final item = props[index];
+                    return GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => DetailsScreen(property: item))),
+                      child: Container(
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Stack(children: [
+                            ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(10)), child: Image.network(item.imageUrl, height: 70, width: double.infinity, fit: BoxFit.cover)),
+                            Positioned(top: 4, left: 4, child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)), child: Text(item.houseType, style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)))),
+                          ]),
+                          Padding(padding: const EdgeInsets.all(5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(item.location, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text("\$${item.monthlyPrice.toStringAsFixed(0)}/mo", style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 10)),
+                            Text("${item.rooms}bd • ${item.sqft}ft", style: const TextStyle(color: Colors.grey, fontSize: 8)),
+                          ])),
                         ]),
-                        Padding(padding: const EdgeInsets.all(5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(item.location, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text("\$${item.monthlyPrice.toStringAsFixed(0)}/mo", style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 10)),
-                          Text("${item.rooms}bd • ${item.sqft}ft", style: const TextStyle(color: Colors.grey, fontSize: 8)),
-                        ])),
-                      ]),
-                    ),
-                  );
-                },
-              );
-            },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         )
       ]),
