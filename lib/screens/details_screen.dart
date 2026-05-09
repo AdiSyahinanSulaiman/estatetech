@@ -47,8 +47,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
     List<String> ids = [myId, widget.property.sellerId];
     ids.sort();
     String chatId = ids.join("_");
-
-    // FIX: Match the fields in your screenshot exactly
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'users': [myId, widget.property.sellerId],
       'lastMessage': 'Interested in ${widget.property.houseType}',
@@ -58,10 +56,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
       'timestamp': FieldValue.serverTimestamp(),
       'propertyId': widget.property.id,
     }, SetOptions(merge: true));
-
     if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) =>
-          ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id)));
+      Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id)));
     }
   }
 
@@ -78,10 +74,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black)),
       body: SingleChildScrollView(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Stack(children: [
@@ -91,13 +89,15 @@ class _DetailsScreenState extends State<DetailsScreen> {
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.property.houseType.toUpperCase(), style: TextStyle(color: navyBlue, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Text(widget.property.houseType, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-              Text(widget.property.location, style: const TextStyle(color: Colors.grey)),
+              Text(widget.property.houseType.toUpperCase(), style: TextStyle(color: navyBlue, fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 5),
+              Text(widget.property.houseType, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+              Text(widget.property.location, style: const TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 25),
-              Text('\$${widget.property.monthlyPrice.toStringAsFixed(0)} / mo', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('\$${widget.property.monthlyPrice.toStringAsFixed(0)} / mo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
               const SizedBox(height: 30),
+
+              // Feature Grid
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Column(
@@ -108,17 +108,28 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 30),
+              // --- ADDED DESCRIPTION SECTION ---
+              Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+              const SizedBox(height: 10),
+              Text(
+                widget.property.description.isNotEmpty ? widget.property.description : "No description provided for this property.",
+                style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+              ),
+
               const SizedBox(height: 40),
               Row(children: [
                 Expanded(child: ElevatedButton(onPressed: _startChat, style: ElevatedButton.styleFrom(backgroundColor: navyBlue, minimumSize: const Size(0, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
                 const SizedBox(width: 10),
                 Expanded(child: OutlinedButton(onPressed: _bookViewing, style: OutlinedButton.styleFrom(minimumSize: const Size(0, 55), side: BorderSide(color: navyBlue), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("Book Viewing", style: TextStyle(color: navyBlue, fontWeight: FontWeight.bold)))),
               ]),
+              const SizedBox(height: 40),
             ]),
           )
         ]),
       ),
     );
   }
-  Widget _feat(IconData icon, String label) => Column(children: [Icon(icon, color: Colors.black54), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11))]);
+  Widget _feat(IconData icon, String label) => Column(children: [Icon(icon, color: Colors.grey, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11))]);
 }

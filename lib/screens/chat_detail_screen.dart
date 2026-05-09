@@ -18,7 +18,6 @@ class ChatDetailScreen extends StatefulWidget {
   final String sellerId;
   final String? propertyId;
   const ChatDetailScreen({super.key, required this.sellerId, this.propertyId});
-
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
 }
@@ -28,7 +27,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final String myId = FirebaseAuth.instance.currentUser!.uid;
   final AudioRecorder audioRecorder = AudioRecorder();
   final AudioPlayer audioPlayer = AudioPlayer();
-
   bool _isTyping = false, _isRecording = false;
   int _recordDuration = 0;
   Timer? _timer;
@@ -38,28 +36,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _msgController.addListener(() {
-      if (mounted) setState(() => _isTyping = _msgController.text.isNotEmpty);
-    });
+    _msgController.addListener(() { if (mounted) setState(() => _isTyping = _msgController.text.isNotEmpty); });
     audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
     audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
     audioPlayer.onPlayerComplete.listen((_) => setState(() { _playingUrl = null; _position = Duration.zero; }));
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    audioRecorder.dispose();
-    audioPlayer.dispose();
-    _msgController.dispose();
-    super.dispose();
-  }
+  void dispose() { _timer?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); _msgController.dispose(); super.dispose(); }
 
-  String _formatTimer(int seconds) {
-    final mins = (seconds ~/ 60).toString();
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return "$mins:$secs";
-  }
+  String _formatTimer(int seconds) => "${(seconds ~/ 60)}:${(seconds % 60).toString().padLeft(2, '0')}";
 
   void _startRecording() async {
     if (await audioRecorder.hasPermission()) {
@@ -77,12 +63,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final path = await audioRecorder.stop();
     setState(() => _isRecording = false);
     if (path != null) _uploadFile(File(path), 'audio');
-  }
-
-  void _cancelRecording() async {
-    _timer?.cancel();
-    await audioRecorder.stop();
-    setState(() => _isRecording = false);
   }
 
   void _uploadFile(File file, String type) async {
@@ -105,14 +85,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       'lastMessage': type == 'text' ? text : 'Sent an attachment',
       'timestamp': FieldValue.serverTimestamp(),
       'users': ids,
+      'propertyId': widget.propertyId,
     }, SetOptions(merge: true));
     _msgController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: isDark ? const Color(0xFF0D1117) : const Color(0xFFF0F2F5),
       appBar: _buildAppBar(),
       body: Column(children: [
         if (widget.propertyId != null) _buildPropertyHeader(),
@@ -125,18 +108,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 var d = doc.data() as Map<String, dynamic>;
                 return (d['senderId'] == myId && d['receiverId'] == widget.sellerId) || (d['senderId'] == widget.sellerId && d['receiverId'] == myId);
               }).toList();
-              return ListView.builder(
-                reverse: true,
-                itemCount: msgs.length,
-                itemBuilder: (context, i) {
-                  var d = msgs[i].data() as Map<String, dynamic>;
-                  bool isMe = d['senderId'] == myId;
-                  return GestureDetector(
-                    onLongPress: isMe ? () => _showDeleteDialog(msgs[i].id) : null,
-                    child: _buildBubble(d, isMe),
-                  );
-                },
-              );
+              return ListView.builder(reverse: true, padding: const EdgeInsets.symmetric(vertical: 10), itemCount: msgs.length, itemBuilder: (context, i) => _buildBubble(msgs[i].data() as Map<String, dynamic>, msgs[i].id));
             },
           ),
         ),
@@ -152,19 +124,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         future: FirebaseFirestore.instance.collection('users').doc(widget.sellerId).get(),
         builder: (context, snap) {
           String name = "User";
-          if (snap.hasData && snap.data!.exists) {
-            name = (snap.data!.data() as Map<String, dynamic>)['name'] ?? "User";
-          }
+          if (snap.hasData && snap.data!.exists) name = (snap.data!.data() as Map<String, dynamic>)['name'] ?? "User";
           return Row(children: [
             GlobalUserDP(radius: 18, userId: widget.sellerId),
             const SizedBox(width: 10),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const Row(children: [
-                CircleAvatar(radius: 4, backgroundColor: Colors.green),
-                SizedBox(width: 4),
-                Text("Online", style: TextStyle(fontSize: 11, color: Colors.white70)),
-              ]),
+              const Row(children: [CircleAvatar(radius: 4, backgroundColor: Colors.green), SizedBox(width: 4), Text("Online", style: TextStyle(fontSize: 11, color: Colors.white70))])
             ]),
           ]);
         },
@@ -173,94 +139,55 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Widget _buildPropertyHeader() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('properties').doc(widget.propertyId).get(),
       builder: (context, snap) {
         if (!snap.hasData || !snap.data!.exists) return const SizedBox();
         var d = snap.data!.data() as Map<String, dynamic>;
         return Container(
-          margin: const EdgeInsets.all(10), padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-          child: Row(children: [
-            ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(d['imageUrl'], width: 50, height: 50, fit: BoxFit.cover)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(d['houseType'], style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(d['location'], style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              Text("\$${d['monthlyPrice']}/mo", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ])),
-          ]),
-        );
+            margin: const EdgeInsets.all(10), padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: isDark ? const Color(0xFF161B22) : Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+            child: Row(children: [ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(d['imageUrl'], width: 50, height: 50, fit: BoxFit.cover)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(d['houseType'], style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)), Text(d['location'], style: const TextStyle(color: Colors.grey, fontSize: 12)), Text("\$${d['monthlyPrice']}/mo", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))]))]));
       },
     );
   }
 
-  Widget _buildBubble(Map<String, dynamic> d, bool isMe) {
+  Widget _buildBubble(Map<String, dynamic> d, String docId) {
+    bool isMe = d['senderId'] == myId;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF1B263B) : Colors.white,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          _buildMediaContent(d, isMe),
-          const SizedBox(height: 4),
-          Text(
-              d['timestamp'] != null ? DateFormat('hh:mm a').format((d['timestamp'] as Timestamp).toDate()) : "",
-              style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.grey)
-          ),
-        ]),
-      ),
-    );
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(
+            onLongPress: isMe ? () => _showDeleteDialog(docId) : null,
+            child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: isMe ? const Color(0xFF1B263B) : (isDark ? const Color(0xFF161B22) : Colors.white), borderRadius: BorderRadius.circular(15)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [_mediaContent(d, isMe), const SizedBox(height: 4), Text(d['timestamp'] != null ? DateFormat('hh:mm a').format((d['timestamp'] as Timestamp).toDate()) : "", style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.grey))]))));
   }
 
-  Widget _buildMediaContent(Map<String, dynamic> d, bool isMe) {
-    Color tc = isMe ? Colors.white : Colors.black;
+  Widget _mediaContent(Map<String, dynamic> d, bool isMe) {
+    Color tc = isMe ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black);
     if (d['type'] == 'image') return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(d['text'], width: 200));
-
     if (d['type'] == 'audio') {
       bool isPlaying = _playingUrl == d['text'];
-      return Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton(icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle, color: tc, size: 35), onPressed: () {
-          if (isPlaying) { audioPlayer.pause(); setState(() => _playingUrl = null); }
-          else { audioPlayer.play(UrlSource(d['text'])); setState(() => _playingUrl = d['text']); }
-        }),
-        if (isPlaying) SizedBox(width: 100, child: Slider(value: _position.inSeconds.toDouble(), max: _duration.inSeconds.toDouble(), onChanged: (v) => audioPlayer.seek(Duration(seconds: v.toInt()))))
-        else Text("Voice Note", style: TextStyle(color: tc)),
-      ]);
+      return Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: Icon(isPlaying ? Icons.pause_circle : Icons.play_circle, color: tc, size: 35), onPressed: () { if (isPlaying) { audioPlayer.pause(); setState(() => _playingUrl = null); } else { audioPlayer.play(UrlSource(d['text'])); setState(() => _playingUrl = d['text']); } }), if (isPlaying) SizedBox(width: 100, child: Slider(activeColor: Colors.amber, value: _position.inSeconds.toDouble(), max: _duration.inSeconds.toDouble(), onChanged: (v) => audioPlayer.seek(Duration(seconds: v.toInt())))) else Text("Voice Note", style: TextStyle(color: tc))]);
     }
     return Text(d['text'] ?? "", style: TextStyle(color: tc, fontSize: 16));
   }
 
   Widget _buildInputArea() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(10), color: Colors.white,
-      child: Row(children: [
-        if (_isRecording) IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: _cancelRecording),
-        Expanded(child: Container(
-          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(25)),
-          child: Row(children: [
-            const SizedBox(width: 10),
-            Expanded(child: _isRecording
-                ? Text("Recording: ${_formatTimer(_recordDuration)}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
-                : TextField(controller: _msgController, decoration: const InputDecoration(hintText: "Message", border: InputBorder.none, contentPadding: EdgeInsets.only(left: 10)))),
-            if (!_isRecording) IconButton(icon: const Icon(Icons.attach_file), onPressed: () {}),
-            if (!_isRecording && !_isTyping) IconButton(icon: const Icon(Icons.camera_alt), onPressed: () {}),
-          ]),
-        )),
-        const SizedBox(width: 5),
-        GestureDetector(
-          onTap: _isTyping ? () => _sendMessage(text: _msgController.text) : (_isRecording ? _stopAndSend : _startRecording),
-          child: CircleAvatar(backgroundColor: const Color(0xFF1B263B), child: Icon(_isTyping ? Icons.send : (_isRecording ? Icons.stop : Icons.mic), color: Colors.white)),
-        ),
-      ]),
-    );
+        padding: const EdgeInsets.all(10), color: isDark ? const Color(0xFF161B22) : Colors.white,
+        child: Row(children: [
+          if (_isRecording) IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () { _timer?.cancel(); audioRecorder.stop(); setState(() => _isRecording = false); }),
+          Expanded(child: Container(decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.grey[100], borderRadius: BorderRadius.circular(25)), child: Row(children: [const SizedBox(width: 10), Expanded(child: _isRecording ? Text("Recording: ${_formatTimer(_recordDuration)}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)) : TextField(controller: _msgController, style: TextStyle(color: isDark ? Colors.white : Colors.black), decoration: const InputDecoration(hintText: "Message", border: InputBorder.none, contentPadding: EdgeInsets.only(left: 10)))), IconButton(icon: const Icon(Icons.attach_file, color: Colors.grey), onPressed: () {}), if (!_isRecording && !_isTyping) IconButton(icon: const Icon(Icons.camera_alt, color: Colors.grey), onPressed: () {})]))),
+          const SizedBox(width: 5),
+          GestureDetector(onTap: _isTyping ? () => _sendMessage(text: _msgController.text) : (_isRecording ? _stopAndSend : _startRecording), child: CircleAvatar(backgroundColor: const Color(0xFF1B263B), child: Icon(_isTyping ? Icons.send : (_isRecording ? Icons.stop : Icons.mic), color: Colors.white)))
+        ]));
   }
 
-  void _showDeleteDialog(String id) {
-    showDialog(context: context, builder: (c) => AlertDialog(title: const Text("Unsend?"), actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text("No")), TextButton(onPressed: () { FirebaseFirestore.instance.collection('messages').doc(id).delete(); Navigator.pop(c); }, child: const Text("Yes"))]));
-  }
+  void _showDeleteDialog(String id) { showDialog(context: context, builder: (c) => AlertDialog(title: const Text("Unsend Message?"), actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text("No")), TextButton(onPressed: () { FirebaseFirestore.instance.collection('messages').doc(id).delete(); Navigator.pop(c); }, child: const Text("Yes"))])); }
 }

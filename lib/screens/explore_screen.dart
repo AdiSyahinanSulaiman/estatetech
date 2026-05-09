@@ -18,32 +18,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     double width = MediaQuery.of(context).size.width;
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("EstateTech", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-        backgroundColor: Colors.white, elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 15),
-            child: GlobalUserDP(radius: 16, onTap: widget.onDPClick),
-          ),
-        ],
+        title: Text("EstateTech", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor, elevation: 0,
+        actions: [Padding(padding: const EdgeInsets.only(right: 15), child: GlobalUserDP(radius: 16, onTap: widget.onDPClick))],
       ),
       body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.all(15), child: TextField(onChanged: (v) => setState(() => searchQuery = v.toLowerCase()), decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: "Search location...", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none), filled: true, fillColor: Colors.grey[100]))),
+        Padding(padding: const EdgeInsets.all(15), child: TextField(onChanged: (v) => setState(() => searchQuery = v.toLowerCase()), decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: "Search location...", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none), filled: true, fillColor: isDark ? Colors.white10 : Colors.grey[100]))),
         SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 15), child: Row(children: ["All", "Detached", "Semi-Detached", "Apartment", "Terrace", "Bungalow"].map((cat) {
           bool isSel = selectedCategory == cat;
           return GestureDetector(
             onTap: () => setState(() => selectedCategory = cat),
-            child: Container(margin: const EdgeInsets.only(right: 10), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), decoration: BoxDecoration(color: isSel ? navy : Colors.grey[100], borderRadius: BorderRadius.circular(20)), child: Text(cat, style: TextStyle(color: isSel ? Colors.white : Colors.black54, fontWeight: FontWeight.bold, fontSize: 12))),
+            child: Container(margin: const EdgeInsets.only(right: 10), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), decoration: BoxDecoration(color: isSel ? navy : (isDark ? Colors.white10 : Colors.grey[100]), borderRadius: BorderRadius.circular(20)), child: Text(cat, style: TextStyle(color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black54), fontWeight: FontWeight.bold, fontSize: 12))),
           );
         }).toList())),
         Expanded(
-          // --- ADDED REFRESHER HERE ---
           child: RefreshIndicator(
             onRefresh: () async => await Future.delayed(const Duration(seconds: 1)),
             color: navy,
@@ -56,9 +51,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   bool matchesSearch = p.location.toLowerCase().contains(searchQuery) || p.houseType.toLowerCase().contains(searchQuery);
                   return matchesCat && matchesSearch;
                 }).toList();
-
                 return GridView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(), // Important for Refresher
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: responsiveRatio),
                   itemCount: props.length,
@@ -67,14 +61,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     return GestureDetector(
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => DetailsScreen(property: item))),
                       child: Container(
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
+                        decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.05) : Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100)),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Stack(children: [
                             ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(10)), child: Image.network(item.imageUrl, height: 70, width: double.infinity, fit: BoxFit.cover)),
                             Positioned(top: 4, left: 4, child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)), child: Text(item.houseType, style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)))),
                           ]),
                           Padding(padding: const EdgeInsets.all(5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(item.location, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(item.location, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: isDark ? Colors.white : Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
                             Text("\$${item.monthlyPrice.toStringAsFixed(0)}/mo", style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 10)),
                             Text("${item.rooms}bd • ${item.sqft}ft", style: const TextStyle(color: Colors.grey, fontSize: 8)),
                           ])),

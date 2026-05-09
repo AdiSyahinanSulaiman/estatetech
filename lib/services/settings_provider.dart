@@ -1,36 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  // 1. DARK MODE STATE
   ThemeMode _themeMode = ThemeMode.light;
+  Locale _locale = const Locale('en');
+  bool _notificationsEnabled = true; // Added Notification state
+
   ThemeMode get themeMode => _themeMode;
+  Locale get locale => _locale;
+  bool get notificationsEnabled => _notificationsEnabled;
 
   void toggleTheme(bool isDark) {
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners(); // This tells the whole app to rebuild with new colors
+    notifyListeners();
   }
-
-  // 2. LANGUAGE STATE
-  Locale _locale = const Locale('en');
-  Locale get locale => _locale;
 
   void setLanguage(String langCode) {
     _locale = Locale(langCode);
-    notifyListeners(); // This triggers the language swap
-  }
-
-  // 3. NOTIFICATION LOGIC
-  bool _notificationsEnabled = true;
-  bool get notificationsEnabled => _notificationsEnabled;
-
-  void toggleNotifications(bool value) async {
-    _notificationsEnabled = value;
-    if (value) {
-      await FirebaseMessaging.instance.subscribeToTopic("all");
-    } else {
-      await FirebaseMessaging.instance.unsubscribeFromTopic("all");
-    }
     notifyListeners();
   }
+
+  void toggleNotifications(bool value) {
+    _notificationsEnabled = value;
+    notifyListeners();
+  }
+
+  static const Map<String, Map<String, String>> _localizedValues = {
+    'en': {
+      'settings': 'Settings', 'edit_profile': 'Edit Profile', 'language': 'Language',
+      'dark_mode': 'Dark Mode', 'logout': 'Log Out', 'account': 'ACCOUNT',
+      'preferences': 'PREFERENCES', 'notifications': 'Notifications'
+    },
+    'ms': {
+      'settings': 'Tetapan', 'edit_profile': 'Sunting Profil', 'language': 'Bahasa',
+      'dark_mode': 'Mod Gelap', 'logout': 'Log Keluar', 'account': 'AKAUN',
+      'preferences': 'PILIHAN', 'notifications': 'Pemberitahuan'
+    }
+  };
+
+  String getText(String key) => _localizedValues[_locale.languageCode]?[key] ?? key;
 }

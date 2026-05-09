@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Keep TikTok background black
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -67,22 +68,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return PageView.builder(
                   scrollDirection: Axis.vertical,
-                  physics: const AlwaysScrollableScrollPhysics(), // Required for RefreshIndicator
+                  physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: sortedList.length,
                   itemBuilder: (context, i) {
                     final item = sortedList[i];
                     return Stack(children: [
                       SizedBox.expand(child: Image.network(item.imageUrl, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.black))),
                       Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.8)]))),
-
-                      // Landlord DP and Name (Left Side)
-                      Positioned(top: 120, left: 20, child: Row(children: [
-                        GlobalUserDP(radius: 18, userId: item.sellerId),
-                        const SizedBox(width: 10),
-                        Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                      ])),
-
-                      // Property Info (Bottom Left)
+                      Positioned(top: 120, left: 20, child: Row(children: [GlobalUserDP(radius: 18, userId: item.sellerId), const SizedBox(width: 10), Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))])),
                       Positioned(bottom: 50, left: 20, right: 90, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(item.houseType.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                         Text(item.location, style: const TextStyle(color: Colors.white70, fontSize: 18)),
@@ -99,8 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 20),
                         ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))), style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Property Details", style: TextStyle(color: Colors.white))),
                       ])),
-
-                      // Actions (Right Side)
                       Positioned(bottom: 60, right: 20, child: Column(children: [
                         StreamBuilder<DocumentSnapshot>(
                             stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(item.id).snapshots(),

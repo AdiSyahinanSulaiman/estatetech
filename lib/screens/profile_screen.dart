@@ -16,13 +16,13 @@ class ProfileScreen extends StatelessWidget {
   final Color navyBlue = const Color(0xFF1B263B);
 
   Future<void> _handleRefresh() async {
-    // This allows the spinner to show for 1 second
     await Future.delayed(const Duration(seconds: 1));
   }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
@@ -38,27 +38,24 @@ class ProfileScreen extends StatelessWidget {
         return DefaultTabController(
           length: isLandlord ? 2 : 3,
           child: Scaffold(
-            backgroundColor: Colors.white,
-            // --- THE REFRESHER ---
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: RefreshIndicator(
               onRefresh: _handleRefresh,
               color: navyBlue,
-              backgroundColor: Colors.white,
-              // edgeOffset ensures the spinner isn't hidden behind the status bar
               edgeOffset: 80,
               child: NestedScrollView(
-                // CRITICAL: This allows the pull-to-refresh to trigger from the top
                 physics: const AlwaysScrollableScrollPhysics(),
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
                     SliverAppBar(
-                      floating: true, pinned: true, backgroundColor: Colors.white, elevation: 0,
+                      floating: true, pinned: true, elevation: 0,
+                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                       title: Text(isLandlord ? 'Business Profile' : 'Tenant Profile',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: navyBlue)),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : navyBlue)),
                       actions: [
-                        IconButton(icon: Icon(Icons.person_add_alt_1_outlined, color: navyBlue),
+                        IconButton(icon: Icon(Icons.person_add_alt_1_outlined, color: isDark ? Colors.white : navyBlue),
                             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SearchUsersScreen()))),
-                        IconButton(icon: Icon(Icons.settings_outlined, color: navyBlue),
+                        IconButton(icon: Icon(Icons.settings_outlined, color: isDark ? Colors.white : navyBlue),
                             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SettingsScreen()))),
                       ],
                     ),
@@ -85,11 +82,11 @@ class ProfileScreen extends StatelessWidget {
                             child: ElevatedButton(
                               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => EditProfileScreen(userData: userData))),
                               style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[100],
+                                  backgroundColor: isDark ? Colors.white10 : Colors.grey[100],
                                   elevation: 0,
                                   minimumSize: const Size(double.infinity, 50),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                              child: const Text("Edit Profile", style: TextStyle(color: Colors.black)),
+                              child: Text("Edit Profile", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -100,41 +97,29 @@ class ProfileScreen extends StatelessWidget {
                       pinned: true,
                       delegate: _SliverAppBarDelegate(
                         TabBar(
-                          indicatorColor: navyBlue, labelColor: navyBlue, unselectedLabelColor: Colors.grey,
+                          indicatorColor: navyBlue,
+                          labelColor: navyBlue,
+                          unselectedLabelColor: Colors.grey,
                           tabs: isLandlord
                               ? const [Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), Tab(icon: Icon(Icons.bookmark_outline), text: "Saved")]
                               : const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")],
                         ),
+                        // Background color is handled here inside the delegate
+                        Theme.of(context).scaffoldBackgroundColor,
                       ),
                     ),
                   ];
                 },
-                // --- THE TAB CONTENT ---
                 body: TabBarView(
                   children: isLandlord
-                      ? [
-                    _wrapWithPhysics(const UserListingsScreen()),
-                    _wrapWithPhysics(const SavedScreen()),
-                  ]
-                      : [
-                    _wrapWithPhysics(const SavedScreen()),
-                    ContactedLandlordsTab(currentUserId: user!.uid),
-                    BookedViewingsTab(currentUserId: user.uid),
-                  ],
+                      ? [const UserListingsScreen(), const SavedScreen()]
+                      : [const SavedScreen(), ContactedLandlordsTab(currentUserId: user!.uid), BookedViewingsTab(currentUserId: user.uid)],
                 ),
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  // Helper to ensure all inner views allow the refresher to work
-  Widget _wrapWithPhysics(Widget child) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: child,
     );
   }
 
@@ -177,15 +162,10 @@ class ContactedLandlordsTab extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('chats').where('users', arrayContains: currentUserId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        if (snapshot.data!.docs.isEmpty) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [SizedBox(height: 100), Center(child: Text("No landlords contacted yet", style: TextStyle(color: Colors.grey)))],
-          );
-        }
+        if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No landlords contacted yet", style: TextStyle(color: Colors.grey)));
 
         return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(), // CRITICAL for Refresher
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(10),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
@@ -201,7 +181,9 @@ class ContactedLandlordsTab extends StatelessWidget {
                 String name = d?['name'] ?? "User";
 
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 10), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                  margin: const EdgeInsets.only(bottom: 10), elevation: 0,
+                  color: Theme.of(context).cardColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200.withOpacity(0.1))),
                   child: ListTile(
                     leading: GlobalUserDP(radius: 20, userId: partnerId),
                     title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -228,26 +210,18 @@ class BookedViewingsTab extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('bookings').where('tenantId', isEqualTo: currentUserId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        if (snapshot.data!.docs.isEmpty) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [SizedBox(height: 100), Center(child: Text("No viewings booked yet", style: TextStyle(color: Colors.grey)))],
-          );
-        }
+        if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No viewings booked yet", style: TextStyle(color: Colors.grey)));
         return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(), // CRITICAL for Refresher
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(10), itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             var booking = snapshot.data!.docs[index].data() as Map<String, dynamic>;
             return Card(
-              color: const Color(0xFFF8F9FA), margin: const EdgeInsets.only(bottom: 10), elevation: 0,
+              color: Theme.of(context).cardColor, margin: const EdgeInsets.only(bottom: 10), elevation: 0,
               child: ListTile(
                 title: Text(booking['propertyName'] ?? "Property", style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text("Date: ${booking['date']}"),
-                trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: const Color(0xFF1B263B), borderRadius: BorderRadius.circular(20)),
-                    child: Text(booking['status'] ?? "Pending", style: const TextStyle(color: Colors.white, fontSize: 10))),
+                trailing: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: const Color(0xFF1B263B), borderRadius: BorderRadius.circular(20)), child: Text(booking['status'] ?? "Pending", style: const TextStyle(color: Colors.white, fontSize: 10))),
               ),
             );
           },
@@ -258,10 +232,19 @@ class BookedViewingsTab extends StatelessWidget {
 }
 
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar);
+  _SliverAppBarDelegate(this._tabBar, this.backgroundColor); // Added backgroundColor to constructor
   final TabBar _tabBar;
+  final Color backgroundColor;
+
   @override double get minExtent => _tabBar.preferredSize.height;
   @override double get maxExtent => _tabBar.preferredSize.height;
-  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => Container(color: Colors.white, child: _tabBar);
+
+  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material( // This Material widget handles the background color for the TabBar
+      color: backgroundColor,
+      child: _tabBar,
+    );
+  }
+
   @override bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
 }
