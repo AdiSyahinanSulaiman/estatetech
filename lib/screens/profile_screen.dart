@@ -65,7 +65,7 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 10),
                           const GlobalUserDP(radius: 60),
                           const SizedBox(height: 15),
-                          Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                           Text(role, style: const TextStyle(color: Colors.grey, fontSize: 16)),
                           const SizedBox(height: 25),
                           Row(
@@ -98,13 +98,12 @@ class ProfileScreen extends StatelessWidget {
                       delegate: _SliverAppBarDelegate(
                         TabBar(
                           indicatorColor: navyBlue,
-                          labelColor: navyBlue,
+                          labelColor: isDark ? Colors.white : navyBlue,
                           unselectedLabelColor: Colors.grey,
                           tabs: isLandlord
                               ? const [Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), Tab(icon: Icon(Icons.bookmark_outline), text: "Saved")]
                               : const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")],
                         ),
-                        // Background color is handled here inside the delegate
                         Theme.of(context).scaffoldBackgroundColor,
                       ),
                     ),
@@ -124,6 +123,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildStat(BuildContext context, String uid, String collection, String label) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     Stream<QuerySnapshot> stream = (collection == 'properties')
         ? FirebaseFirestore.instance.collection('properties').where('sellerId', isEqualTo: uid).snapshots()
         : FirebaseFirestore.instance.collection('users').doc(uid).collection(collection).snapshots();
@@ -138,7 +138,10 @@ class ProfileScreen extends StatelessWidget {
         stream: stream,
         builder: (context, snap) {
           String value = snap.hasData ? snap.data!.docs.length.toString() : "0";
-          return Column(children: [Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))]);
+          return Column(children: [
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))
+          ]);
         },
       ),
     );
@@ -148,14 +151,6 @@ class ProfileScreen extends StatelessWidget {
 class ContactedLandlordsTab extends StatelessWidget {
   final String currentUserId;
   const ContactedLandlordsTab({super.key, required this.currentUserId});
-
-  void _deleteChat(BuildContext context, String partnerId) async {
-    List<String> ids = [currentUserId, partnerId];
-    ids.sort();
-    await FirebaseFirestore.instance.collection('chats').doc(ids.join("_")).delete();
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Contact removed")));
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -163,35 +158,17 @@ class ContactedLandlordsTab extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No landlords contacted yet", style: TextStyle(color: Colors.grey)));
-
         return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(10),
-          itemCount: snapshot.data!.docs.length,
+          physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(10), itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             var chat = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-            List users = chat['users'];
-            String partnerId = users.firstWhere((id) => id != currentUserId);
-
+            String partnerId = (chat['users'] as List).firstWhere((id) => id != currentUserId);
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
               builder: (context, userSnap) {
                 if (!userSnap.hasData) return const SizedBox();
                 var d = userSnap.data!.data() as Map<String, dynamic>?;
-                String name = d?['name'] ?? "User";
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10), elevation: 0,
-                  color: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200.withOpacity(0.1))),
-                  child: ListTile(
-                    leading: GlobalUserDP(radius: 20, userId: partnerId),
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(chat['lastMessage'] ?? "New Inquiry", maxLines: 1),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId))),
-                    onLongPress: () => _deleteChat(context, partnerId),
-                  ),
-                );
+                return Card(color: Theme.of(context).cardColor, margin: const EdgeInsets.only(bottom: 10), child: ListTile(leading: GlobalUserDP(radius: 20, userId: partnerId), title: Text(d?['name'] ?? "User", style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(chat['lastMessage'] ?? "New Inquiry", maxLines: 1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: partnerId)))));
               },
             );
           },
@@ -212,18 +189,10 @@ class BookedViewingsTab extends StatelessWidget {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No viewings booked yet", style: TextStyle(color: Colors.grey)));
         return ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(10), itemCount: snapshot.data!.docs.length,
+          physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(10), itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             var booking = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-            return Card(
-              color: Theme.of(context).cardColor, margin: const EdgeInsets.only(bottom: 10), elevation: 0,
-              child: ListTile(
-                title: Text(booking['propertyName'] ?? "Property", style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text("Date: ${booking['date']}"),
-                trailing: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: const Color(0xFF1B263B), borderRadius: BorderRadius.circular(20)), child: Text(booking['status'] ?? "Pending", style: const TextStyle(color: Colors.white, fontSize: 10))),
-              ),
-            );
+            return Card(color: Theme.of(context).cardColor, margin: const EdgeInsets.only(bottom: 10), elevation: 0, child: ListTile(title: Text(booking['propertyName'] ?? "Property", style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text("Date: ${booking['date']}"), trailing: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: const Color(0xFF1B263B), borderRadius: BorderRadius.circular(20)), child: Text(booking['status'] ?? "Pending", style: const TextStyle(color: Colors.white, fontSize: 10)))));
           },
         );
       },
@@ -232,19 +201,11 @@ class BookedViewingsTab extends StatelessWidget {
 }
 
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar, this.backgroundColor); // Added backgroundColor to constructor
+  _SliverAppBarDelegate(this._tabBar, this.backgroundColor);
   final TabBar _tabBar;
   final Color backgroundColor;
-
   @override double get minExtent => _tabBar.preferredSize.height;
   @override double get maxExtent => _tabBar.preferredSize.height;
-
-  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Material( // This Material widget handles the background color for the TabBar
-      color: backgroundColor,
-      child: _tabBar,
-    );
-  }
-
+  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => Material(color: backgroundColor, child: _tabBar);
   @override bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
 }

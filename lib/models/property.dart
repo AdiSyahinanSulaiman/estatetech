@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Property {
   final String id;
   final String houseType;
+  final String listingType; // Added: 'Rent' or 'Sale'
   final String location;
   final double monthlyPrice;
   final double totalPrice;
@@ -19,22 +20,21 @@ class Property {
   final int livingRoom;
   final int sqft;
   final DateTime createdAt;
-  bool isSaved;
 
   Property({
-    required this.id, required this.houseType, required this.location,
+    required this.id, required this.houseType, required this.listingType, required this.location,
     required this.monthlyPrice, required this.totalPrice, required this.imageUrl,
     required this.virtualTourUrl, required this.sellerId, required this.sellerName,
     required this.sellerPhoto, required this.description, required this.rooms,
     required this.baths, required this.wetKitchen, required this.dryKitchen,
     required this.livingRoom, required this.sqft, required this.createdAt,
-    this.isSaved = false,
   });
 
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
     return Property(
       id: documentId,
       houseType: data['houseType'] ?? 'Property',
+      listingType: data['listingType'] ?? 'Rent',
       location: data['location'] ?? '',
       monthlyPrice: (data['monthlyPrice'] ?? 0).toDouble(),
       totalPrice: (data['totalPrice'] ?? 0).toDouble(),
@@ -50,9 +50,7 @@ class Property {
       dryKitchen: data['dryKitchen'] ?? 0,
       livingRoom: data['livingRoom'] ?? 0,
       sqft: data['sqft'] ?? 0,
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
     );
   }
 }

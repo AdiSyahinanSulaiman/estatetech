@@ -47,6 +47,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     List<String> ids = [myId, widget.property.sellerId];
     ids.sort();
     String chatId = ids.join("_");
+
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'users': [myId, widget.property.sellerId],
       'lastMessage': 'Interested in ${widget.property.houseType}',
@@ -55,9 +56,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
       'tenantId': myId,
       'timestamp': FieldValue.serverTimestamp(),
       'propertyId': widget.property.id,
+      'lastSenderId': myId, // New logic
+      'isRead': false,      // New logic
     }, SetOptions(merge: true));
+
     if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id)));
+      Navigator.push(context, MaterialPageRoute(builder: (context) =>
+          ChatDetailScreen(sellerId: widget.property.sellerId, propertyId: widget.property.id)));
     }
   }
 
@@ -96,8 +101,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
               const SizedBox(height: 25),
               Text('\$${widget.property.monthlyPrice.toStringAsFixed(0)} / mo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
               const SizedBox(height: 30),
-
-              // Feature Grid
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Column(
@@ -108,16 +111,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 30),
-              // --- ADDED DESCRIPTION SECTION ---
               Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
               const SizedBox(height: 10),
-              Text(
-                widget.property.description.isNotEmpty ? widget.property.description : "No description provided for this property.",
-                style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
-              ),
-
+              Text(widget.property.description.isNotEmpty ? widget.property.description : "No description provided for this property.", style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5)),
               const SizedBox(height: 40),
               Row(children: [
                 Expanded(child: ElevatedButton(onPressed: _startChat, style: ElevatedButton.styleFrom(backgroundColor: navyBlue, minimumSize: const Size(0, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),

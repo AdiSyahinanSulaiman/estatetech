@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../widgets/global_user_dp.dart';
 import 'chat_detail_screen.dart';
 
@@ -9,6 +10,20 @@ class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key, required this.onDPClick});
 
   Future<void> _handleRefresh() async => await Future.delayed(const Duration(seconds: 1));
+
+  // --- NEW: RELATIVE TIME LOGIC ---
+  String _getRelativeTime(Timestamp? timestamp) {
+    if (timestamp == null) return "";
+    DateTime date = timestamp.toDate();
+    DateTime now = DateTime.now();
+    Duration diff = now.difference(date);
+
+    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m";
+    if (diff.inHours < 24) return "${diff.inHours}h";
+    if (diff.inDays < 7) return DateFormat('E').format(date);
+    return DateFormat('dd/MM').format(date);
+  }
 
   void _showDeleteDialog(BuildContext context, String partnerId, String partnerName) {
     final String myId = FirebaseAuth.instance.currentUser!.uid;
@@ -87,12 +102,15 @@ class MessagesScreen extends StatelessWidget {
                       String partnerId = users.firstWhere((id) => id != myId, orElse: () => "");
                       String? propertyId = chatData['propertyId'];
 
+                      // --- UNREAD LOGIC ---
+                      bool isUnread = (chatData['lastSenderId'] != myId) && (chatData['isRead'] == false);
+
                       return FutureBuilder<DocumentSnapshot>(
                         future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
                         builder: (context, userSnap) {
                           if (!userSnap.hasData) return const SizedBox();
                           var userData = userSnap.data!.data() as Map<String, dynamic>?;
-                          return _buildConversationTile(context, userData?['name'] ?? "User", partnerId, chatData, propertyId);
+                          return _buildConversationTile(context, userData?['name'] ?? "User", partnerId, chatData, propertyId, isUnread);
                         },
                       );
                     },
@@ -106,8 +124,10 @@ class MessagesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildConversationTile(BuildContext context, String name, String partnerId, Map<String, dynamic> chatData, String? propertyId) {
+  Widget _buildConversationTile(BuildContext context, String name, String partnerId, Map<String, dynamic> chatData, String? propertyId, bool isUnread) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    const Color navyBlue = Color(0xFF1B263B);
+
     return Column(
       children: [
         ListTile(
@@ -135,9 +155,34 @@ class MessagesScreen extends StatelessWidget {
               ],
             ),
           ),
-          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black)),
-          subtitle: Text(chatData['lastMessage'] ?? "New message", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey)),
-          trailing: const Text("Now", style: TextStyle(color: Colors.grey, fontSize: 12)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black)),
+              // --- DYNAMIC TIME ---
+              Text(_getRelativeTime(chatData['timestamp']),
+                  style: TextStyle(color: isUnread ? navyBlue : Colors.grey, fontSize: 12, fontWeight: isUnread ? FontWeight.bold : FontWeight.normal)),
+            ],
+          ),
+          subtitle: Row(
+            children: [
+              Expanded(
+                child: Text(
+                    chatData['lastMessage'] ?? "New message",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: isUnread ? (isDark ? Colors.white : Colors.black) : Colors.grey, fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal)
+                ),
+              ),
+              // --- HIGHLIGHTED DOT ---
+              if (isUnread)
+                Container(
+                  width: 10, height: 10,
+                  margin: const EdgeInsets.only(left: 5),
+                  decoration: const BoxDecoration(color: navyBlue, shape: BoxShape.circle),
+                ),
+            ],
+          ),
         ),
         Divider(height: 1, indent: 90, color: isDark ? Colors.white10 : Colors.grey[200]),
       ],

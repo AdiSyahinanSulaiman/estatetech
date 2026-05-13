@@ -1,12 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 1. Permissions for Internet, GPS, and Microphone -->
+    <!-- 1. Permissions for Internet, GPS, and Microphone (Objective 2 & 3 Support) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- 2. Modern 2026 Media Permissions (Replaces the old yellow-line versions) -->
+    <!-- 2. Modern Media Permissions for 2026/SDK 34+ (Standard for High-End Apps) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -16,6 +16,10 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true">
+
+        <!-- 3. REAL GOOGLE MAPS API KEY (Objective 2 Integration) -->
+        <meta-data android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDVujdJcJq7T0HbE-FtRk8l-YFywtsAon0"/>
 
         <activity
             android:name=".MainActivity"
