@@ -11,6 +11,9 @@ android {
     namespace = "com.estatetech.app.estatetech"
     compileSdk = 36 // Updated to 36 for modern multimedia support
 
+    // --- ADDED THIS LINE TO FIX THE TERMINAL ERROR ---
+    ndkVersion = "28.2.13676358"
+
     compileOptions {
         // THIS IS THE CRITICAL FIX FOR THE NOTIFICATION ERROR
         isCoreLibraryDesugaringEnabled = true
@@ -40,6 +43,9 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            // Mentor Tip: Ensure these are false for the demo to prevent code shrinking errors
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
