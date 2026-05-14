@@ -11,7 +11,7 @@ class MessagesScreen extends StatelessWidget {
 
   Future<void> _handleRefresh() async => await Future.delayed(const Duration(seconds: 1));
 
-  // --- NEW: RELATIVE TIME LOGIC ---
+  // --- FIXED: RELATIVE TIME LOGIC ---
   String _getRelativeTime(Timestamp? timestamp) {
     if (timestamp == null) return "";
     DateTime date = timestamp.toDate();
@@ -22,6 +22,7 @@ class MessagesScreen extends StatelessWidget {
     if (diff.inMinutes < 60) return "${diff.inMinutes}m";
     if (diff.inHours < 24) return "${diff.inHours}h";
     if (diff.inDays < 7) return DateFormat('E').format(date);
+    // FIXED: Added .format(date) below
     return DateFormat('dd/MM').format(date);
   }
 
@@ -31,7 +32,6 @@ class MessagesScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Conversation?"),
-        content: Text("Remove all messages with $partnerName?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
@@ -99,16 +99,24 @@ class MessagesScreen extends StatelessWidget {
                     itemBuilder: (context, index) {
                       var chatData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                       List users = chatData['users'] ?? [];
-                      String partnerId = users.firstWhere((id) => id != myId, orElse: () => "");
-                      String? propertyId = chatData['propertyId'];
 
-                      // --- UNREAD LOGIC ---
+                      // --- SAFETY LOGIC FOR SELF-MESSAGING ---
+                      String partnerId;
+                      if (users.length == 1) {
+                        partnerId = users[0]; // It's a chat with yourself
+                      } else {
+                        partnerId = users.firstWhere((id) => id != myId, orElse: () => myId);
+                      }
+
+                      if (partnerId.isEmpty) return const SizedBox.shrink();
+
+                      String? propertyId = chatData['propertyId'];
                       bool isUnread = (chatData['lastSenderId'] != myId) && (chatData['isRead'] == false);
 
                       return FutureBuilder<DocumentSnapshot>(
                         future: FirebaseFirestore.instance.collection('users').doc(partnerId).get(),
                         builder: (context, userSnap) {
-                          if (!userSnap.hasData) return const SizedBox();
+                          if (!userSnap.hasData || !userSnap.data!.exists) return const SizedBox.shrink();
                           var userData = userSnap.data!.data() as Map<String, dynamic>?;
                           return _buildConversationTile(context, userData?['name'] ?? "User", partnerId, chatData, propertyId, isUnread);
                         },
@@ -140,7 +148,7 @@ class MessagesScreen extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: propertyId != null
+                  child: propertyId != null && propertyId.isNotEmpty
                       ? FutureBuilder<DocumentSnapshot>(
                     future: FirebaseFirestore.instance.collection('properties').doc(propertyId).get(),
                     builder: (context, snap) {
@@ -159,8 +167,7 @@ class MessagesScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black)),
-              // --- DYNAMIC TIME ---
-              Text(_getRelativeTime(chatData['timestamp']),
+              Text(_getRelativeTime(chatData['timestamp'] as Timestamp?),
                   style: TextStyle(color: isUnread ? navyBlue : Colors.grey, fontSize: 12, fontWeight: isUnread ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
@@ -174,7 +181,6 @@ class MessagesScreen extends StatelessWidget {
                     style: TextStyle(color: isUnread ? (isDark ? Colors.white : Colors.black) : Colors.grey, fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal)
                 ),
               ),
-              // --- HIGHLIGHTED DOT ---
               if (isUnread)
                 Container(
                   width: 10, height: 10,
