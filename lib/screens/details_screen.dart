@@ -47,7 +47,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
     List<String> ids = [myId, widget.property.sellerId];
     ids.sort();
     String chatId = ids.join("_");
-
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'users': [myId, widget.property.sellerId],
       'lastMessage': 'Interested in ${widget.property.houseType}',
@@ -56,8 +55,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
       'tenantId': myId,
       'timestamp': FieldValue.serverTimestamp(),
       'propertyId': widget.property.id,
-      'lastSenderId': myId, // New logic
-      'isRead': false,      // New logic
+      'lastSenderId': myId,
+      'isRead': false,
     }, SetOptions(merge: true));
 
     if (mounted) {
@@ -66,21 +65,52 @@ class _DetailsScreenState extends State<DetailsScreen> {
     }
   }
 
+  // --- UPDATED: PICK DATE AND TIME ---
   void _bookViewing() async {
-    DateTime? pickedDate = await showDatePicker(context: context, initialDate: DateTime.now().add(const Duration(days: 1)), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)));
-    if (pickedDate != null) {
+    // 1. Pick the Date
+    DateTime? pickedDate = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now().add(const Duration(days: 1)),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 30))
+    );
+
+    if (pickedDate == null) return;
+
+    // 2. Pick the Time (Modern Material 3 Picker)
+    TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 10, minute: 0),
+    );
+
+    if (pickedTime != null) {
+      String formattedDate = DateFormat('MMM dd, yyyy').format(pickedDate);
+      String formattedTime = pickedTime.format(context);
+
       await FirebaseFirestore.instance.collection('bookings').add({
-        'tenantId': myId, 'landlordId': widget.property.sellerId, 'propertyId': widget.property.id, 'propertyName': widget.property.houseType,
-        'location': widget.property.location, 'date': DateFormat('MMM dd, yyyy').format(pickedDate), 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
+        'tenantId': myId,
+        'tenantName': FirebaseAuth.instance.currentUser?.displayName ?? "Tenant",
+        'landlordId': widget.property.sellerId,
+        'propertyId': widget.property.id,
+        'propertyName': widget.property.houseType,
+        'location': widget.property.location,
+        'date': formattedDate,
+        'time': formattedTime, // Saved Time
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Viewing Booked!")));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Request sent for $formattedDate at $formattedTime!"))
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
@@ -114,7 +144,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               const SizedBox(height: 30),
               Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
               const SizedBox(height: 10),
-              Text(widget.property.description.isNotEmpty ? widget.property.description : "No description provided for this property.", style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5)),
+              Text(widget.property.description.isNotEmpty ? widget.property.description : "No description provided.", style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5)),
               const SizedBox(height: 40),
               Row(children: [
                 Expanded(child: ElevatedButton(onPressed: _startChat, style: ElevatedButton.styleFrom(backgroundColor: navyBlue, minimumSize: const Size(0, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Message Landlord", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),

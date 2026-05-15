@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/local_notification_service.dart';
 import 'home_screen.dart';
 import 'explore_screen.dart';
 import 'add_post_screen.dart';
 import 'calculator_screen.dart';
-import 'messages_screen.dart'; // Ensure this matches your file name
+import 'messages_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   String userRole = 'Loading';
   bool _isUploadingListing = false;
+  final String myId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
@@ -26,44 +28,61 @@ class _MainScreenState extends State<MainScreen> {
     _getUserRole();
   }
 
+  void _startGlobalNotificationListener() {
+    // 1. Message Listener
+    FirebaseFirestore.instance
+        .collection('messages')
+        .where('receiverId', isEqualTo: myId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          var data = change.doc.data() as Map<String, dynamic>;
+          LocalNotificationService.showNotification(
+            "New Message",
+            data['text'] ?? "You have a new inquiry!",
+          );
+        }
+      }
+    });
+
+    // 2. Booking Listener
+    FirebaseFirestore.instance
+        .collection('bookings')
+        .where(userRole == 'Landlord' ? 'landlordId' : 'tenantId', isEqualTo: myId)
+        .snapshots()
+        .listen((snapshot) {
+      for (var change in snapshot.docChanges) {
+        var data = change.doc.data() as Map<String, dynamic>;
+        if (userRole == 'Landlord' && change.type == DocumentChangeType.added) {
+          LocalNotificationService.showNotification("New Booking", "New viewing request received!");
+        }
+        if (userRole == 'Tenant' && change.type == DocumentChangeType.modified) {
+          LocalNotificationService.showNotification("Booking Update", "Status: ${data['status']}");
+        }
+      }
+    });
+  }
+
   void _getUserRole() async {
-    var doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(FirebaseAuth.instance.currentUser?.uid)
-        .get();
+    var doc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
     if (mounted) {
-      setState(() => userRole = doc.data()?['role'] ?? 'Tenant');
+      setState(() { userRole = doc.data()?['role'] ?? 'Tenant'; });
+      _startGlobalNotificationListener();
     }
   }
 
   void _goToProfile() => setState(() => _selectedIndex = 4);
-
-  // Triggered the moment 'Publish' is clicked
-  void _handlePostStart() {
-    setState(() {
-      _selectedIndex = 0; // Jump to Home Screen immediately
-      _isUploadingListing = true; // Show the publishing bar
-    });
-  }
-
-  // Triggered after Firebase upload finishes
+  void _handlePostStart() => setState(() { _selectedIndex = 0; _isUploadingListing = true; });
   void _handlePostComplete() async {
-    // Keep the loading bar visible for 3 seconds for the lecturer to see
     await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
-      setState(() {
-        _isUploadingListing = false; // Hide the publishing bar
-      });
-    }
+    if (mounted) setState(() => _isUploadingListing = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (userRole == 'Loading') {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF1B263B))),
-      );
-    }
+    if (userRole == 'Loading') return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     final List<Widget> _pages = [
       HomeScreen(isUploading: _isUploadingListing, onDPClick: _goToProfile),
@@ -71,8 +90,8 @@ class _MainScreenState extends State<MainScreen> {
       userRole == 'Landlord'
           ? AddPostScreen(onPostStart: _handlePostStart, onPostComplete: _handlePostComplete)
           : CalculatorScreen(onDPClick: _goToProfile),
-      MessagesScreen(onDPClick: _goToProfile), // FIXED: Corrected class name
-      const ProfileScreen(),
+      MessagesScreen(onDPClick: _goToProfile),
+      ProfileScreen(),
     ];
 
     return Scaffold(
@@ -80,7 +99,6 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          // Prevent navigation while the upload bar is active
           if (_isUploadingListing) return;
           setState(() => _selectedIndex = index);
         },

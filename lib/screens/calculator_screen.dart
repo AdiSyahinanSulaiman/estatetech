@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Added
+import 'package:firebase_auth/firebase_auth.dart'; // Added
 import '../widgets/global_user_dp.dart';
 
 class CalculatorScreen extends StatefulWidget {
@@ -22,6 +24,47 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   double _remainingBalance = 0;
   final Color navyBlue = const Color(0xFF1B263B);
 
+  // --- NEW: AI BRIDGE LOGIC ---
+  void _applyToAI() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'calculatedBudget': _recommendedRent,
+        'budgetModeActive': true, // Tells AIEngine to use this budget
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("AI Feed successfully updated to your budget!")),
+        );
+      }
+    }
+  }
+
+  void _showAIBridgeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Optimize your Feed?", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("Would you like EstateTech AI to prioritize properties within your BND \$${_recommendedRent.toStringAsFixed(0)} budget on your Home and Explore pages?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Maybe Later", style: TextStyle(color: Colors.grey))
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _applyToAI();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: navyBlue),
+            child: const Text("Yes, Personalize", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _calculateResults() {
     double salary = double.tryParse(_salaryController.text) ?? 0;
     double debts = double.tryParse(_debtController.text) ?? 0;
@@ -31,6 +74,11 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       _recommendedRent = netIncome * _budgetMode;
       _remainingBalance = netIncome - _recommendedRent;
       _currentStep = 2; // Move to results
+    });
+
+    // Automatically trigger the popup after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _showAIBridgeDialog();
     });
   }
 
