@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class VirtualTourScreen extends StatefulWidget {
-  final String imageUrl; // This will be your Pexels Living Room link
+  final String imageUrl; // This will now accept your Kuula link
   const VirtualTourScreen({super.key, required this.imageUrl});
 
   @override
@@ -17,78 +17,34 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
   void initState() {
     super.initState();
 
-    // We define two scenes: 'livingRoom' and 'kitchen'
-    // I found another Pexels 360 image for the kitchen so they match!
-    final String kitchenUrl = 'https://images.pexels.com/photos/3457273/pexels-photo-3457273.jpeg';
-
-    final String localHtml = '''
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-          <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-          <style>
-              #panorama { width: 100vw; height: 100vh; background-color: black; }
-              body { margin: 0; padding: 0; overflow: hidden; }
-              .arrow-hotspot {
-                  height: 60px; width: 60px;
-                  background: url('https://img.icons8.com/ios-filled/100/ffffff/circled-up-2.png');
-                  background-size: contain; cursor: pointer;
-              }
-          </style>
-      </head>
-      <body>
-          <div id="panorama"></div>
-          <script>
-              pannellum.viewer('panorama', {
-                  "default": { "firstScene": "livingRoom", "autoLoad": true },
-                  "scenes": {
-                      "livingRoom": {
-                          "type": "equirectangular",
-                          "panorama": "${widget.imageUrl}",
-                          "hotSpots": [
-                              {
-                                  "pitch": -15, "yaw": 20,
-                                  "type": "scene",
-                                  "cssClass": "arrow-hotspot",
-                                  "sceneId": "kitchen" // This moves you to the kitchen scene
-                              }
-                          ]
-                      },
-                      "kitchen": {
-                          "type": "equirectangular",
-                          "panorama": "$kitchenUrl",
-                          "hotSpots": [
-                              {
-                                  "pitch": -15, "yaw": 160,
-                                  "type": "scene",
-                                  "cssClass": "arrow-hotspot",
-                                  "sceneId": "livingRoom" // This moves you back to the living room
-                              }
-                          ]
-                      }
-                  }
-              });
-          </script>
-      </body>
-      </html>
-    ''';
-
+    // 1. Initialize the controller
     controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setJavaScriptMode(JavaScriptMode.unrestricted) // This allows hotspots to work
       ..setBackgroundColor(Colors.black)
+
+    // --- THE FIX ---
+    // Removed .setDomStorageEnabled because it's automatic in this version
+
+      ..setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1")
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageFinished: (_) => setState(() => isLoading = false),
+          onPageStarted: (_) {
+            if (mounted) setState(() => isLoading = true);
+          },
+          onPageFinished: (_) {
+            if (mounted) setState(() => isLoading = false);
+          },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint("Tour Error: ${error.description}");
+          },
         ),
       )
-      ..loadHtmlString(localHtml);
+      ..loadRequest(Uri.parse(widget.imageUrl.trim()));
   }
 
   @override
   Widget build(BuildContext context) {
+    // UI is 100% PRESERVED from your original code
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -98,9 +54,21 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
       ),
       body: Stack(
         children: [
+          // The 360 Viewer
           WebViewWidget(controller: controller),
+
+          // Loading Indicator
           if (isLoading)
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
+            const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 10),
+                  Text("Opening Virtual Tour...", style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
         ],
       ),
     );

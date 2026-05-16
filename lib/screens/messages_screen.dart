@@ -58,7 +58,7 @@ class MessagesScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        title: Text("EstateTech",
+        title: Text("Messages",
             style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
           Padding(padding: const EdgeInsets.only(right: 15), child: GlobalUserDP(radius: 18, onTap: onDPClick)),

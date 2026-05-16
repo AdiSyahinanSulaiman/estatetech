@@ -7,7 +7,7 @@ import 'details_screen.dart';
 class UserListingsScreen extends StatelessWidget {
   const UserListingsScreen({super.key});
 
-  // --- DELETE CONFIRMATION DIALOG ---
+  // --- DELETE CONFIRMATION DIALOG (Preserved) ---
   void _confirmDelete(BuildContext context, String propertyId) {
     showDialog(
       context: context,
@@ -17,12 +17,12 @@ class UserListingsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // Close without deleting
+            onPressed: () => Navigator.pop(context),
             child: const Text("No", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(context);
               await FirebaseFirestore.instance.collection('properties').doc(propertyId).delete();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -62,9 +62,10 @@ class UserListingsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.75
+              crossAxisSpacing: 8, // Tighter spacing like Explore
+              mainAxisSpacing: 8,
+              // --- FIXED: 1.0 or higher makes the box SHORTER ---
+              childAspectRatio: 1.0
           ),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
@@ -86,35 +87,49 @@ class UserListingsScreen extends StatelessWidget {
                       children: [
                         ClipRRect(
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                          child: Image.network(p.imageUrl, height: 100, width: double.infinity, fit: BoxFit.cover),
+                          child: Image.network(
+                              p.imageUrl,
+                              height: 65, // Reduced from 100 to 65 to make it "shorter"
+                              width: double.infinity,
+                              fit: BoxFit.cover
+                          ),
                         ),
                         // THE DELETE TRIGGER (RED 'X')
                         Positioned(
-                          top: 5, right: 5,
+                          top: 4, right: 4,
                           child: GestureDetector(
-                            onTap: () => _confirmDelete(context, p.id), // Open the Yes/No warning
+                            onTap: () => _confirmDelete(context, p.id),
                             child: CircleAvatar(
-                              radius: 10,
+                              radius: 9, // Slightly smaller to match shorter box
                               backgroundColor: Colors.red.withOpacity(0.8),
-                              child: const Icon(Icons.close, size: 12, color: Colors.white),
+                              child: const Icon(Icons.close, size: 10, color: Colors.white),
                             ),
                           ),
                         ),
                       ],
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(4.0), // Tightened padding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(p.houseType, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                          Text(p.location, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                          const SizedBox(height: 4),
+                          Text(
+                            p.houseType,
+                            style: const TextStyle(color: Colors.grey, fontSize: 8), // Small font like Explore
+                            maxLines: 1,
+                          ),
+                          Text(
+                              p.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.grey, fontSize: 8)
+                          ),
+                          const SizedBox(height: 2),
                           Text(
                             "\$${p.monthlyPrice.toStringAsFixed(0)}/mo",
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 9, // Smaller to fit the short box
                                 color: isDark ? Colors.white : Colors.black
                             ),
                           ),

@@ -46,7 +46,8 @@ class ProfileScreen extends StatelessWidget {
                     SliverAppBar(
                       floating: true, pinned: true, elevation: 0,
                       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                      title: Text(isLandlord ? 'Business Profile' : 'Tenant Profile', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : navyBlue)),
+                      // --- FIXED: Title is now simply "Profile" for everyone ---
+                      title: Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : navyBlue)),
                       actions: [
                         IconButton(icon: Icon(Icons.person_add_alt_1_outlined, color: isDark ? Colors.white : navyBlue), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SearchUsersScreen()))),
                         IconButton(icon: Icon(Icons.settings_outlined, color: isDark ? Colors.white : navyBlue), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SettingsScreen()))),
@@ -54,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     SliverToBoxAdapter(
                       child: Column(children: [
-                        const SizedBox(height: 10), GlobalUserDP(radius: 60), const SizedBox(height: 15),
+                        const SizedBox(height: 10), const GlobalUserDP(radius: 60), const SizedBox(height: 15),
                         Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                         Text(role, style: const TextStyle(color: Colors.grey, fontSize: 16)),
                         const SizedBox(height: 25),
@@ -71,18 +72,18 @@ class ProfileScreen extends StatelessWidget {
                     SliverPersistentHeader(pinned: true, delegate: _SliverAppBarDelegate(
                       TabBar(
                           indicatorColor: navyBlue, labelColor: isDark ? Colors.white : navyBlue, unselectedLabelColor: Colors.grey,
-                          tabs: const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
+                          tabs: isLandlord
+                              ? const [Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
+                              : const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
                       ),
                       Theme.of(context).scaffoldBackgroundColor,
                     )),
                   ];
                 },
                 body: TabBarView(
-                  children: [
-                    const SavedScreen(),
-                    ContactedLandlordsTab(currentUserId: user!.uid),
-                    BookedViewingsTab(currentUserId: user.uid, isLandlord: isLandlord)
-                  ],
+                  children: isLandlord
+                      ? [const UserListingsScreen(), ContactedLandlordsTab(currentUserId: user!.uid), BookedViewingsTab(currentUserId: user.uid, isLandlord: true)]
+                      : [const SavedScreen(), ContactedLandlordsTab(currentUserId: user!.uid), BookedViewingsTab(currentUserId: user.uid, isLandlord: false)],
                 ),
               ),
             ),
@@ -135,7 +136,6 @@ class BookedViewingsTab extends StatelessWidget {
 
   void _confirmAction(BuildContext context, String docId, String status) {
     String actionText = status == "Approved" ? "Approve" : status == "Rejected" ? "Reject" : "Cancel";
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -233,7 +233,6 @@ class BookedViewingsTab extends StatelessWidget {
                           const Text("View Details", style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
                         ],
                       ),
-
                       const SizedBox(height: 15),
                       if (isLandlord && status == "Pending")
                         Row(children: [

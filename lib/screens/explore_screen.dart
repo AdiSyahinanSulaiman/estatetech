@@ -51,7 +51,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("EstateTech", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        title: const Text("Explore", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         backgroundColor: Colors.white, elevation: 0,
         actions: [
           Padding(

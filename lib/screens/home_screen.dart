@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
-        title: const Text("EstateTech", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Home", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
           Padding(padding: const EdgeInsets.only(right: 15, left: 10), child: GlobalUserDP(radius: 16, onTap: widget.onDPClick)),
