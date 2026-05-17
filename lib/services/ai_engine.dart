@@ -1,7 +1,6 @@
 import '../models/property.dart';
 
 class AIEngine {
-  // --- KAGGLE TRAINED WEIGHTS ---
   static const double KAGGLE_ROOM_WEIGHT = -12773.27;
   static const double KAGGLE_SQFT_WEIGHT = 66819.82;
 
@@ -13,8 +12,6 @@ class AIEngine {
   double calculateMatchScore(Property p, Map<String, dynamic>? pref) {
     if (pref == null || pref.isEmpty) return 0.0;
 
-    // 1. Determine Target Price
-    // Logic: If 'Budget Mode' is enabled from calculator, use that. Otherwise use browsing average.
     bool budgetModeActive = pref['budgetModeActive'] ?? false;
     double targetP = budgetModeActive
         ? (pref['calculatedBudget'] ?? 2000.0).toDouble()
@@ -23,14 +20,11 @@ class AIEngine {
     double targetR = (pref['avgRooms'] ?? 3.0).toDouble();
     double targetS = (pref['avgSqft'] ?? 1200.0).toDouble();
 
-    // 2. Calculate differences
-    double pDiff = _norm((p.monthlyPrice - targetP).abs(), 0, 5000);
+    double pDiff = _norm((p.monthlyPrice - targetP).abs(), 0, 10000);
     double rDiff = _norm((p.rooms - targetR).abs(), 0, 10);
     double sDiff = _norm((p.sqft - targetS).abs(), 0, 5000);
 
-    // 3. Apply Weighted Logic
-    // If Budget Mode is active, we make Price 80% of the decision.
-    double priceWeight = budgetModeActive ? 0.80 : 0.50;
+    double priceWeight = budgetModeActive ? 0.90 : 0.50;
     double featureWeight = 1.0 - priceWeight;
 
     double roomInfluence = (1.0 - rDiff) * (KAGGLE_ROOM_WEIGHT.abs() / 100000) * featureWeight;
@@ -40,19 +34,26 @@ class AIEngine {
     return priceInfluence + roomInfluence + sqftInfluence;
   }
 
-  List<Property> rankFeed(List<Property> allProps, Map<String, dynamic>? userVector) {
+  // --- REFINED: REFRESH-BASED RANKING ---
+  List<Property> rankFeed(List<Property> allProps, Map<String, dynamic>? userVector, DateTime lastRefreshTime) {
+    if (allProps.isEmpty) return [];
     List<Property> sortedList = List.from(allProps);
-    DateTime now = DateTime.now();
 
     sortedList.sort((a, b) {
-      // Demo boost for brand new posts
-      bool aIsNew = now.difference(a.createdAt).inMinutes < 10;
-      bool bIsNew = now.difference(b.createdAt).inMinutes < 10;
-      if (aIsNew && !bIsNew) return -1;
+      // 1. FRESHNESS: Was this posted AFTER the last time the user refreshed?
+      bool aIsNew = a.createdAt.isAfter(lastRefreshTime);
+      bool bIsNew = b.createdAt.isAfter(lastRefreshTime);
+
+      if (aIsNew && !bIsNew) return -1; // New ones always win
       if (!aIsNew && bIsNew) return 1;
 
+      // 2. AI MATCH SCORE: If both are "seen" (pre-refresh) or both are "brand new"
       double scoreA = calculateMatchScore(a, userVector);
       double scoreB = calculateMatchScore(b, userVector);
+
+      if ((scoreA - scoreB).abs() < 0.0001) {
+        return b.createdAt.compareTo(a.createdAt);
+      }
       return scoreB.compareTo(scoreA);
     });
     return sortedList;

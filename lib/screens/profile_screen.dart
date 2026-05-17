@@ -46,7 +46,6 @@ class ProfileScreen extends StatelessWidget {
                     SliverAppBar(
                       floating: true, pinned: true, elevation: 0,
                       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                      // --- FIXED: Title is now simply "Profile" for everyone ---
                       title: Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : navyBlue)),
                       actions: [
                         IconButton(icon: Icon(Icons.person_add_alt_1_outlined, color: isDark ? Colors.white : navyBlue), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SearchUsersScreen()))),
@@ -82,8 +81,16 @@ class ProfileScreen extends StatelessWidget {
                 },
                 body: TabBarView(
                   children: isLandlord
-                      ? [const UserListingsScreen(), ContactedLandlordsTab(currentUserId: user!.uid), BookedViewingsTab(currentUserId: user.uid, isLandlord: true)]
-                      : [const SavedScreen(), ContactedLandlordsTab(currentUserId: user!.uid), BookedViewingsTab(currentUserId: user.uid, isLandlord: false)],
+                      ? [
+                    const UserListingsScreen(), // CORRECTED: Landlord Tab 1
+                    ContactedLandlordsTab(currentUserId: user!.uid),
+                    BookedViewingsTab(currentUserId: user.uid, isLandlord: true)
+                  ]
+                      : [
+                    const SavedScreen(), // CORRECTED: Tenant Tab 1
+                    ContactedLandlordsTab(currentUserId: user!.uid),
+                    BookedViewingsTab(currentUserId: user.uid, isLandlord: false)
+                  ],
                 ),
               ),
             ),
@@ -157,6 +164,13 @@ class BookedViewingsTab extends StatelessWidget {
     );
   }
 
+  void _deleteBookingRecord(BuildContext context, String bookingId) async {
+    await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Record cleared.")));
+    }
+  }
+
   void _openHouseDetails(BuildContext context, String propertyId) async {
     var doc = await FirebaseFirestore.instance.collection('properties').doc(propertyId).get();
     if (doc.exists && context.mounted) {
@@ -187,71 +201,89 @@ class BookedViewingsTab extends StatelessWidget {
             String propertyId = booking['propertyId'] ?? "";
             String tenantId = booking['tenantId'] ?? "";
 
-            return Card(
-              color: Theme.of(context).cardColor,
-              margin: const EdgeInsets.only(bottom: 15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.withOpacity(0.1))),
-              child: InkWell(
-                onTap: () => _openHouseDetails(context, propertyId),
-                borderRadius: BorderRadius.circular(15),
-                child: Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: Column(
-                    children: [
-                      Row(
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('properties').doc(propertyId).get(),
+              builder: (context, pSnap) {
+                bool isDeleted = pSnap.hasData && !pSnap.data!.exists;
+                String propertyName = isDeleted ? "Listing Removed" : (booking['propertyName'] ?? "Property");
+
+                return Card(
+                  color: Theme.of(context).cardColor,
+                  margin: const EdgeInsets.only(bottom: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.withOpacity(0.1))),
+                  child: InkWell(
+                    onTap: isDeleted ? null : () => _openHouseDetails(context, propertyId),
+                    borderRadius: BorderRadius.circular(15),
+                    child: Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: Column(
                         children: [
-                          FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance.collection('properties').doc(propertyId).get(),
-                            builder: (context, pSnap) {
-                              String url = "https://via.placeholder.com/150";
-                              if (pSnap.hasData && pSnap.data!.exists) url = (pSnap.data!.data() as Map<String, dynamic>)['imageUrl'];
-                              return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, width: 50, height: 50, fit: BoxFit.cover));
-                            },
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: 50, height: 50, color: Colors.grey[200],
+                                  child: Icon(isDeleted ? Icons.delete_outline : Icons.home, color: Colors.grey),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(propertyName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDeleted ? Colors.redAccent : null)),
+                                Text("${booking['date']} @ ${booking['time'] ?? 'TBD'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              ])),
+                              _statusBadge(status),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(booking['propertyName'] ?? "Property", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text("${booking['date']} @ ${booking['time']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          ])),
-                          _statusBadge(status),
+                          const Divider(height: 30),
+                          Row(
+                            children: [
+                              GlobalUserDP(radius: 15, userId: isLandlord ? tenantId : booking['landlordId']),
+                              const SizedBox(width: 10),
+                              FutureBuilder<DocumentSnapshot>(
+                                future: FirebaseFirestore.instance.collection('users').doc(isLandlord ? tenantId : booking['landlordId']).get(),
+                                builder: (context, uSnap) {
+                                  String uName = "User";
+                                  if (uSnap.hasData && uSnap.data!.exists) uName = (uSnap.data!.data() as Map<String, dynamic>)['name'] ?? "User";
+                                  return Text(isLandlord ? "Requested by: $uName" : "Host: $uName", style: const TextStyle(fontSize: 13, color: Colors.blueGrey));
+                                },
+                              ),
+                              const Spacer(),
+                              if (!isDeleted)
+                                const Text("View Details", style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold))
+                              else
+                                TextButton.icon(
+                                  onPressed: () => _deleteBookingRecord(context, doc.id),
+                                  icon: const Icon(Icons.delete_forever, color: Colors.red, size: 14),
+                                  label: const Text("Clear Record", style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                            ],
+                          ),
+
+                          if (isLandlord && status == "Pending" && !isDeleted) ...[
+                            const SizedBox(height: 15),
+                            Row(children: [
+                              Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Rejected"), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
+                              const SizedBox(width: 10),
+                              Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
+                            ]),
+                          ] else if (!isLandlord && (status == "Pending" || status == "Approved") && !isDeleted)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 15),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                    onPressed: () => _confirmAction(context, doc.id, "Cancelled"),
+                                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                                    child: const Text("Cancel Request", style: TextStyle(color: Colors.red))),
+                              ),
+                            ),
                         ],
                       ),
-                      const Divider(height: 30),
-                      Row(
-                        children: [
-                          GlobalUserDP(radius: 15, userId: isLandlord ? tenantId : booking['landlordId']),
-                          const SizedBox(width: 10),
-                          FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance.collection('users').doc(isLandlord ? tenantId : booking['landlordId']).get(),
-                            builder: (context, uSnap) {
-                              String uName = "Loading...";
-                              if (uSnap.hasData && uSnap.data!.exists) uName = (uSnap.data!.data() as Map<String, dynamic>)['name'];
-                              return Text(isLandlord ? "Requested by: $uName" : "Host: $uName", style: const TextStyle(fontSize: 13, color: Colors.blueGrey));
-                            },
-                          ),
-                          const Spacer(),
-                          const Text("View Details", style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      if (isLandlord && status == "Pending")
-                        Row(children: [
-                          Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Rejected"), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
-                          const SizedBox(width: 10),
-                          Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
-                        ])
-                      else if (!isLandlord && (status == "Pending" || status == "Approved"))
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                              onPressed: () => _confirmAction(context, doc.id, "Cancelled"),
-                              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
-                              child: const Text("Cancel Request", style: TextStyle(color: Colors.red))),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );

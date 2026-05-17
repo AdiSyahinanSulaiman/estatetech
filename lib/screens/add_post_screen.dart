@@ -29,10 +29,29 @@ class _AddPostScreenState extends State<AddPostScreen> {
   List<File> _pickedImages = [];
   LatLng? _pickedCoordinates;
   String _type = 'Detached';
-  String _listingType = 'Rent'; // Added Listing Type state
+  String _listingType = 'Rent';
   int rooms = 0, baths = 0, wetK = 0, dryK = 0, livingR = 0;
   final Color navy = const Color(0xFF1B263B);
   bool _isProcessing = false;
+
+  // --- MASTER POOL OF 15 HIGH-QUALITY HOUSE IMAGES ---
+  final List<String> _placeholderPool = [
+    'https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1000',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1000',
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1000',
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1000',
+    'https://images.unsplash.com/photo-1600607687940-47a04b629571?q=80&w=1000',
+    'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?q=80&w=1000',
+    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1000',
+    'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=1000',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=1000',
+    'https://images.unsplash.com/photo-1572120339559-7f45198a7735?q=80&w=1000',
+    'https://images.unsplash.com/photo-1576941089067-2de3c901e126?q=80&w=1000',
+    'https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=1000',
+    'https://images.unsplash.com/photo-1448630360428-65456885c650?q=80&w=1000',
+    'https://images.unsplash.com/photo-1513584684031-43d10ad60383?q=80&w=1000',
+    'https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?q=80&w=1000',
+  ];
 
   Future<void> _pickImages() async {
     if (_isProcessing) return;
@@ -47,7 +66,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
 
   void _selectLocationOnMap() async {
     final LatLng? result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const MapPickerScreen()));
-    if (result != null) setState(() { _pickedCoordinates = result; _loc.text = "Location Captured ✅"; });
+    if (result != null) setState(() { _pickedCoordinates = result; });
   }
 
   Future<void> _submit() async {
@@ -62,18 +81,26 @@ class _AddPostScreenState extends State<AddPostScreen> {
       String photo = user.data()?['photoUrl'] ?? "";
 
       List<String> imageUrls = [];
-      for (var image in _pickedImages) {
-        var ref = FirebaseStorage.instance.ref().child('properties').child('${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.jpg');
-        await ref.putFile(image);
-        String url = await ref.getDownloadURL();
-        imageUrls.add(url);
-      }
 
-      if (imageUrls.isEmpty) imageUrls.add('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1000');
+      // A. If user picked images, upload them
+      if (_pickedImages.isNotEmpty) {
+        for (var image in _pickedImages) {
+          var ref = FirebaseStorage.instance.ref().child('properties').child('${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.jpg');
+          await ref.putFile(image);
+          String url = await ref.getDownloadURL();
+          imageUrls.add(url);
+        }
+      }
+      // B. If NO images picked, generate a dynamic placeholder gallery
+      else {
+        List<String> pool = List.from(_placeholderPool);
+        pool.shuffle(); // Randomize the list
+        imageUrls = pool.take(4).toList(); // Take 4 unique images
+      }
 
       await FirebaseFirestore.instance.collection('properties').add({
         'houseType': _type,
-        'listingType': _listingType, // Saved to Firestore
+        'listingType': _listingType,
         'location': _loc.text.trim(),
         'latitude': _pickedCoordinates?.latitude ?? 4.9031,
         'longitude': _pickedCoordinates?.longitude ?? 114.9149,
@@ -83,8 +110,9 @@ class _AddPostScreenState extends State<AddPostScreen> {
         'description': _desc.text.trim(),
         'rooms': rooms, 'baths': baths, 'wetKitchen': wetK, 'dryKitchen': dryK, 'livingRoom': livingR,
         'sellerId': uid, 'sellerName': name, 'sellerPhoto': photo,
-        'imageUrl': imageUrls[0], 'galleryUrls': imageUrls,
-        'virtualTourUrl': _tourUrlController.text.isNotEmpty ? _tourUrlController.text.trim() : 'https://kuula.co/explore',
+        'imageUrl': imageUrls[0],
+        'galleryUrls': imageUrls,
+        'virtualTourUrl': _tourUrlController.text.trim(),
         'createdAt': Timestamp.now(),
       });
       widget.onPostComplete();
@@ -112,7 +140,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 child: Container(
                   width: double.infinity, height: 160,
                   child: _pickedImages.isEmpty
-                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.blueGrey[300]), const SizedBox(height: 10), const Text("Upload property images", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)), Text("Up to 10 images", style: TextStyle(fontSize: 12, color: Colors.grey[400]))])
+                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.blueGrey[300]), const SizedBox(height: 10), const Text("Upload property images", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)), Text("Upload the property you want to sell/rent", style: TextStyle(fontSize: 10, color: Colors.grey[400]))])
                       : ListView.builder(scrollDirection: Axis.horizontal, itemCount: _pickedImages.length, itemBuilder: (context, index) => Padding(padding: const EdgeInsets.all(8.0), child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(_pickedImages[index], width: 120, height: 120, fit: BoxFit.cover)))),
                 ),
               ),
@@ -141,7 +169,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
               )),
             ]),
             const SizedBox(height: 15),
-            ListTile(onTap: _isProcessing ? null : _selectLocationOnMap, leading: Icon(Icons.map_outlined, color: navy), title: const Text("Select Location on Map", style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(_pickedCoordinates == null ? "Not set" : "Location Captured ✅"), tileColor: isDark ? Colors.white10 : Colors.grey[50], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            ListTile(onTap: _isProcessing ? null : _selectLocationOnMap, leading: Icon(Icons.map_outlined, color: navy), title: const Text("Select Location on Map", style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(_pickedCoordinates == null ? "Not set" : "GPS Captured ✅"), tileColor: isDark ? Colors.white10 : Colors.grey[50], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             const SizedBox(height: 15),
             TextField(controller: _loc, decoration: const InputDecoration(labelText: "Location Area Name", border: OutlineInputBorder())),
             const SizedBox(height: 15),
@@ -171,8 +199,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
 class DashedRectPainter extends CustomPainter {
   final Color color;
   DashedRectPainter({required this.color});
-  @override
-  void paint(Canvas canvas, Size size) {
+  @override void paint(Canvas canvas, Size size) {
     double dashWidth = 5, dashSpace = 3;
     final paint = Paint()..color = color ..strokeWidth = 1 ..style = PaintingStyle.stroke;
     RRect rect = RRect.fromLTRBR(0, 0, size.width, size.height, const Radius.circular(15));

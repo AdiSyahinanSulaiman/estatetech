@@ -3,11 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Property {
   final String id;
   final String houseType;
-  final String listingType; // Added: 'Rent' or 'Sale'
+  final String listingType;
   final String location;
+  final double latitude;
+  final double longitude;
   final double monthlyPrice;
   final double totalPrice;
   final String imageUrl;
+  final List<String> galleryUrls;
   final String virtualTourUrl;
   final String sellerId;
   final String sellerName;
@@ -23,11 +26,13 @@ class Property {
 
   Property({
     required this.id, required this.houseType, required this.listingType, required this.location,
+    required this.latitude, required this.longitude,
     required this.monthlyPrice, required this.totalPrice, required this.imageUrl,
-    required this.virtualTourUrl, required this.sellerId, required this.sellerName,
-    required this.sellerPhoto, required this.description, required this.rooms,
-    required this.baths, required this.wetKitchen, required this.dryKitchen,
-    required this.livingRoom, required this.sqft, required this.createdAt,
+    required this.galleryUrls, required this.virtualTourUrl, required this.sellerId,
+    required this.sellerName, required this.sellerPhoto, required this.description,
+    required this.rooms, required this.baths, required this.wetKitchen,
+    required this.dryKitchen, required this.livingRoom, required this.sqft,
+    required this.createdAt,
   });
 
   factory Property.fromMap(Map<String, dynamic> data, String documentId) {
@@ -36,9 +41,12 @@ class Property {
       houseType: data['houseType'] ?? 'Property',
       listingType: data['listingType'] ?? 'Rent',
       location: data['location'] ?? '',
+      latitude: (data['latitude'] ?? 4.9031).toDouble(),
+      longitude: (data['longitude'] ?? 114.9149).toDouble(),
       monthlyPrice: (data['monthlyPrice'] ?? 0).toDouble(),
       totalPrice: (data['totalPrice'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'] ?? '',
+      galleryUrls: List<String>.from(data['galleryUrls'] ?? []),
       virtualTourUrl: data['virtualTourUrl'] ?? '',
       sellerId: data['sellerId'] ?? '',
       sellerName: data['sellerName'] ?? 'Landlord',

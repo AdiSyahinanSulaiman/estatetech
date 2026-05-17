@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/property.dart';
 import '../widgets/global_user_dp.dart';
-import '../services/ai_engine.dart'; // IMPORT AI ENGINE
+import '../services/ai_engine.dart';
 import 'details_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -18,23 +18,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String searchQuery = "";
   final Color navy = const Color(0xFF1B263B);
 
-  // AI COMPONENTS
   final AIEngine _ai = AIEngine();
   Map<String, dynamic>? _userVector;
   final String myId = FirebaseAuth.instance.currentUser!.uid;
 
+  // --- NEW: SESSION TIMER FOR AI ---
+  DateTime _sessionStartTime = DateTime.now();
+
   @override
   void initState() {
     super.initState();
-    _loadAI(); // Load preferences when opening explore
+    _loadAI();
   }
 
-  // Fetch the user's preference vector (Price, Rooms, Sqft averages)
   Future<void> _loadAI() async {
     try {
       var userDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
-      if (mounted && userDoc.exists) {
-        setState(() => _userVector = userDoc.data());
+      if (mounted) {
+        setState(() {
+          _userVector = userDoc.data();
+          // Reset the session time on pull-to-refresh
+          _sessionStartTime = DateTime.now();
+        });
       }
     } catch (e) {
       print("Explore AI Load Error: $e");
@@ -45,7 +50,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     double width = MediaQuery.of(context).size.width;
-    // PRESERVED: Your exact responsive ratio logic
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
@@ -61,7 +65,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ],
       ),
       body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // 1. SEARCH BAR (UI Preserved)
         Padding(
             padding: const EdgeInsets.all(15),
             child: TextField(
@@ -76,7 +79,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             )
         ),
 
-        // 2. CATEGORY FILTERS (UI Preserved)
         SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -96,30 +98,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
         const SizedBox(height: 10),
 
-        // 3. AI-POWERED GRID
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _loadAI, // Pull down to refresh AI profile
+            onRefresh: _loadAI,
             color: navy,
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('properties').snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                // --- STEP 1: CONVERT DATA ---
                 List<Property> props = snapshot.data!.docs.map((doc) =>
                     Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
 
-                // --- STEP 2: FILTER BY USER INPUT ---
                 var filteredProps = props.where((p) {
                   bool matchesCat = selectedCategory == "All" || p.houseType == selectedCategory;
                   bool matchesSearch = p.location.toLowerCase().contains(searchQuery) || p.houseType.toLowerCase().contains(searchQuery);
                   return matchesCat && matchesSearch;
                 }).toList();
 
-                // --- STEP 3: APPLY AI RANKING (The Magic) ---
-                // Even within search results, the "best matches" appear first
-                List<Property> rankedProps = _ai.rankFeed(filteredProps, _userVector);
+                // --- FIXED: Now passing all 3 arguments: Props, Vector, and SessionTime ---
+                List<Property> rankedProps = _ai.rankFeed(filteredProps, _userVector, _sessionStartTime);
 
                 if (rankedProps.isEmpty) return const Center(child: Text("No listings found."));
 
@@ -151,7 +149,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           Padding(padding: const EdgeInsets.all(5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(item.location, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: isDark ? Colors.white : Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
                             Text("\$${item.monthlyPrice.toStringAsFixed(0)}/mo", style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 10)),
-                            // PRESERVED: Your exact bd/sqft line and font size
                             Text("${item.rooms}bd • ${item.sqft}ft", style: const TextStyle(color: Colors.grey, fontSize: 8)),
                           ])),
                         ]),
