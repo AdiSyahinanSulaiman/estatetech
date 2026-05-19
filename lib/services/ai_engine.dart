@@ -34,20 +34,18 @@ class AIEngine {
     return priceInfluence + roomInfluence + sqftInfluence;
   }
 
-  // --- REFINED: REFRESH-BASED RANKING ---
   List<Property> rankFeed(List<Property> allProps, Map<String, dynamic>? userVector, DateTime lastRefreshTime) {
     if (allProps.isEmpty) return [];
     List<Property> sortedList = List.from(allProps);
 
     sortedList.sort((a, b) {
-      // 1. FRESHNESS: Was this posted AFTER the last time the user refreshed?
+      // FRESHNESS OVERRIDE
       bool aIsNew = a.createdAt.isAfter(lastRefreshTime);
       bool bIsNew = b.createdAt.isAfter(lastRefreshTime);
 
-      if (aIsNew && !bIsNew) return -1; // New ones always win
+      if (aIsNew && !bIsNew) return -1;
       if (!aIsNew && bIsNew) return 1;
 
-      // 2. AI MATCH SCORE: If both are "seen" (pre-refresh) or both are "brand new"
       double scoreA = calculateMatchScore(a, userVector);
       double scoreB = calculateMatchScore(b, userVector);
 

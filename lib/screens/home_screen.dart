@@ -21,8 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final String myId = FirebaseAuth.instance.currentUser!.uid;
   final AIEngine _ai = AIEngine();
   Map<String, dynamic>? _userVector;
-
-  // TRACK REFRESH STATE
   DateTime _lastRefreshTime = DateTime.now();
 
   @override
@@ -37,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _userVector = userDoc.data();
-          // Update refresh time so new posts sink into the AI list
           _lastRefreshTime = DateTime.now();
         });
       }
@@ -56,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
-        title: const Text("Home", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("EstateTech", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
           Padding(padding: const EdgeInsets.only(right: 15, left: 10), child: GlobalUserDP(radius: 16, onTap: widget.onDPClick)),
@@ -73,8 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.white));
                 List<Property> props = snapshot.data!.docs.map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
-
-                // --- PASS REFRESH TIME ---
                 List<Property> sortedList = _ai.rankFeed(props, _userVector, _lastRefreshTime);
 
                 return PageView.builder(
@@ -86,21 +81,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Stack(children: [
                       SizedBox.expand(child: Image.network(item.imageUrl, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: Colors.black))),
                       Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.8)]))),
+
+                      // Landlord DP Section
                       Positioned(top: 120, left: 20, child: GestureDetector(
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ViewProfileScreen(userId: item.sellerId))),
-                        child: Row(children: [GlobalUserDP(radius: 18, userId: item.sellerId), const SizedBox(width: 10), Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))]),
+                        child: Row(children: [
+                          GlobalUserDP(radius: 18, userId: item.sellerId),
+                          const SizedBox(width: 10),
+                          Text(item.sellerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))
+                        ]),
                       )),
+
+                      // Property Info Section (UI 100% PRESERVED)
                       Positioned(bottom: 50, left: 20, right: 90, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(item.houseType.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                         Text(item.location, style: const TextStyle(color: Colors.white70, fontSize: 18)),
                         const SizedBox(height: 10),
-                        Row(children: [const Icon(Icons.king_bed_outlined, color: Colors.white70, size: 18), Text(" ${item.rooms}bd  •  ", style: const TextStyle(color: Colors.white70)), const Icon(Icons.square_foot, color: Colors.white70, size: 18), Text(" ${item.sqft} sqft", style: const TextStyle(color: Colors.white70))]),
+                        Row(children: [
+                          const Icon(Icons.king_bed_outlined, color: Colors.white70, size: 18),
+                          Text(" ${item.rooms}bd  •  ", style: const TextStyle(color: Colors.white70)),
+                          const Icon(Icons.square_foot, color: Colors.white70, size: 18),
+                          Text(" ${item.sqft} sqft", style: const TextStyle(color: Colors.white70)),
+                        ]),
                         const SizedBox(height: 15),
                         Text('Monthly: \$${item.monthlyPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         Text('Full Price: \$${(item.totalPrice / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300)),
+
+                        // --- NEW: SUBTLE STATUS TEXT (Light Gray / white70) ---
+                        Text(
+                            'Listing: For ${item.listingType}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)
+                        ),
+
                         const SizedBox(height: 20),
                         ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DetailsScreen(property: item))), style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Property Details", style: TextStyle(color: Colors.white))),
                       ])),
+
                       Positioned(bottom: 60, right: 20, child: Column(children: [
                         StreamBuilder<DocumentSnapshot>(
                             stream: FirebaseFirestore.instance.collection('users').doc(myId).collection('saved').doc(item.id).snapshots(),

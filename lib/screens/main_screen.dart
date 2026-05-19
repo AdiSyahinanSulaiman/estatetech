@@ -80,6 +80,13 @@ class _MainScreenState extends State<MainScreen> {
     if (mounted) setState(() => _isUploadingListing = false);
   }
 
+  // --- NEW: FUNCTION TO HANDLE THE X BUTTON ---
+  void _handleCancel() {
+    setState(() {
+      _selectedIndex = 0; // Switches the tab back to Home
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (userRole == 'Loading') return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -88,7 +95,11 @@ class _MainScreenState extends State<MainScreen> {
       HomeScreen(isUploading: _isUploadingListing, onDPClick: _goToProfile),
       ExploreScreen(onDPClick: _goToProfile),
       userRole == 'Landlord'
-          ? AddPostScreen(onPostStart: _handlePostStart, onPostComplete: _handlePostComplete)
+          ? AddPostScreen(
+        onPostStart: _handlePostStart,
+        onPostComplete: _handlePostComplete,
+        onCancel: _handleCancel, // Linked to the function above
+      )
           : CalculatorScreen(onDPClick: _goToProfile),
       MessagesScreen(onDPClick: _goToProfile),
       ProfileScreen(),

@@ -71,23 +71,33 @@ class ProfileScreen extends StatelessWidget {
                     SliverPersistentHeader(pinned: true, delegate: _SliverAppBarDelegate(
                       TabBar(
                           indicatorColor: navyBlue, labelColor: isDark ? Colors.white : navyBlue, unselectedLabelColor: Colors.grey,
+                          // --- CORRECTED ROLE TAB LOGIC ---
                           tabs: isLandlord
-                              ? const [Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
-                              : const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
+                              ? const [
+                            Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), // Landlord 1
+                            Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"),
+                            Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings"),
+                          ]
+                              : const [
+                            Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), // Tenant 1
+                            Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"),
+                            Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings"),
+                          ]
                       ),
                       Theme.of(context).scaffoldBackgroundColor,
                     )),
                   ];
                 },
                 body: TabBarView(
+                  // --- CORRECTED ROLE BODY LOGIC ---
                   children: isLandlord
                       ? [
-                    const UserListingsScreen(), // CORRECTED: Landlord Tab 1
+                    const UserListingsScreen(), // Landlord starts with Listings
                     ContactedLandlordsTab(currentUserId: user!.uid),
                     BookedViewingsTab(currentUserId: user.uid, isLandlord: true)
                   ]
                       : [
-                    const SavedScreen(), // CORRECTED: Tenant Tab 1
+                    const SavedScreen(), // Tenant starts with Saved
                     ContactedLandlordsTab(currentUserId: user!.uid),
                     BookedViewingsTab(currentUserId: user.uid, isLandlord: false)
                   ],

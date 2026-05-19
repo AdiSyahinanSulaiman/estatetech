@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/global_user_dp.dart';
+import 'view_profile_screen.dart'; // FIXED: Added this import to enable stalking
 
 class UsersListScreen extends StatelessWidget {
   final String userId;
@@ -17,19 +18,20 @@ class UsersListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color navyBlue = Color(0xFF1B263B);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: navyBlue, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: isDark ? Colors.white : navyBlue, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           title,
-          style: const TextStyle(color: navyBlue, fontWeight: FontWeight.bold),
+          style: TextStyle(color: isDark ? Colors.white : navyBlue, fontWeight: FontWeight.bold),
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -51,7 +53,7 @@ class UsersListScreen extends StatelessWidget {
                   Icon(Icons.group_outlined, size: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
-                    "No one here yet",
+                    "No $title yet",
                     style: TextStyle(color: Colors.grey[500], fontSize: 16),
                   ),
                 ],
@@ -63,9 +65,7 @@ class UsersListScreen extends StatelessWidget {
             itemCount: snapshot.data!.docs.length,
             padding: const EdgeInsets.symmetric(vertical: 10),
             itemBuilder: (context, index) {
-              // The doc ID is the UID of the user to display
               String userUid = snapshot.data!.docs[index].id;
-
               return UserTile(uid: userUid);
             },
           );
@@ -75,46 +75,45 @@ class UsersListScreen extends StatelessWidget {
   }
 }
 
-// Sub-widget to fetch individual user details (Name, Photo, Role)
 class UserTile extends StatelessWidget {
   final String uid;
   const UserTile({super.key, required this.uid});
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
+        if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
 
         var userData = snapshot.data!.data() as Map<String, dynamic>?;
         if (userData == null) return const SizedBox.shrink();
 
+        String name = userData['name'] ?? "User";
+        String role = userData['role'] ?? "Tenant";
+
         return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.grey[200],
-            backgroundImage: userData['photoUrl'] != null
-                ? NetworkImage(userData['photoUrl'])
-                : null,
-            child: userData['photoUrl'] == null
-                ? const Icon(Icons.person, color: Colors.grey)
-                : null,
-          ),
+          // FIXED: Using GlobalUserDP with userId for live sync
+          leading: GlobalUserDP(radius: 22, userId: uid),
           title: Text(
-            userData['name'] ?? "EstateTech User",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(userData['role'] ?? "Tenant"),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(20),
+            name,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
             ),
-            child: const Text("View", style: TextStyle(fontSize: 12)),
           ),
+          subtitle: Text(role, style: const TextStyle(color: Colors.grey)),
+          trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+          // --- THE STALK LOGIC: TAP TO VIEW PROFILE ---
           onTap: () {
-            // Logic to view this specific user's profile
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ViewProfileScreen(userId: uid),
+              ),
+            );
           },
         );
       },

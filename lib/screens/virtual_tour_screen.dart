@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class VirtualTourScreen extends StatefulWidget {
-  final String imageUrl; // This will now accept your Kuula link
+  final String imageUrl; // Supports Kuula, Matterport, Pannellum, etc.
   const VirtualTourScreen({super.key, required this.imageUrl});
 
   @override
@@ -17,15 +17,21 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
   void initState() {
     super.initState();
 
-    // 1. Initialize the controller
+    // --- FIX: AUTOMATIC SCHEME CHECK ---
+    // If the user pastes "my.matterport.com...", this adds "https://" automatically
+    String finalUrl = widget.imageUrl.trim();
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://$finalUrl';
+    }
+
     controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted) // This allows hotspots to work
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
 
-    // --- THE FIX ---
-    // Removed .setDomStorageEnabled because it's automatic in this version
+    // UNIVERSAL USER AGENT
+    // Matterport requires this to enable the 3D 'Dollhouse' and smooth navigation
+      ..setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 
-      ..setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1")
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
@@ -35,37 +41,41 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
             if (mounted) setState(() => isLoading = false);
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint("Tour Error: ${error.description}");
+            debugPrint("Virtual Tour Error: ${error.description}");
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.imageUrl.trim()));
+      ..loadRequest(Uri.parse(finalUrl)); // Uses the corrected URL
   }
 
   @override
   Widget build(BuildContext context) {
-    // UI is 100% PRESERVED from your original code
+    // UI 100% PRESERVED
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("Property Walkthrough", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.black,
+        title: const Text("EstateTech 360° Explorer",
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w400)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Stack(
         children: [
-          // The 360 Viewer
+          // THE 360 VIEWER
           WebViewWidget(controller: controller),
 
-          // Loading Indicator
+          // LOADING OVERLAY
           if (isLoading)
             const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(color: Colors.white),
-                  SizedBox(height: 10),
-                  Text("Opening Virtual Tour...", style: TextStyle(color: Colors.white70)),
+                  SizedBox(height: 15),
+                  Text("Initializing 360° Environment...",
+                      style: TextStyle(color: Colors.white70, fontSize: 14)),
                 ],
               ),
             ),

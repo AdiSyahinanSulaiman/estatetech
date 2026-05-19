@@ -12,7 +12,8 @@ import 'map_picker_screen.dart';
 class AddPostScreen extends StatefulWidget {
   final VoidCallback onPostStart;
   final VoidCallback onPostComplete;
-  const AddPostScreen({super.key, required this.onPostStart, required this.onPostComplete});
+  final VoidCallback onCancel; // Added for the X button
+  const AddPostScreen({super.key, required this.onPostStart, required this.onPostComplete, required this.onCancel});
 
   @override
   State<AddPostScreen> createState() => _AddPostScreenState();
@@ -34,23 +35,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
   final Color navy = const Color(0xFF1B263B);
   bool _isProcessing = false;
 
-  // --- MASTER POOL OF 15 HIGH-QUALITY HOUSE IMAGES ---
   final List<String> _placeholderPool = [
     'https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1000',
     'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1000',
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1000',
-    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1000',
-    'https://images.unsplash.com/photo-1600607687940-47a04b629571?q=80&w=1000',
-    'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?q=80&w=1000',
-    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1000',
-    'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=1000',
-    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=1000',
-    'https://images.unsplash.com/photo-1572120339559-7f45198a7735?q=80&w=1000',
-    'https://images.unsplash.com/photo-1576941089067-2de3c901e126?q=80&w=1000',
-    'https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=1000',
-    'https://images.unsplash.com/photo-1448630360428-65456885c650?q=80&w=1000',
-    'https://images.unsplash.com/photo-1513584684031-43d10ad60383?q=80&w=1000',
-    'https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?q=80&w=1000',
   ];
 
   Future<void> _pickImages() async {
@@ -66,7 +54,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
 
   void _selectLocationOnMap() async {
     final LatLng? result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const MapPickerScreen()));
-    if (result != null) setState(() { _pickedCoordinates = result; });
+    if (result != null) setState(() { _pickedCoordinates = result; _loc.text = "Location Captured ✅"; });
   }
 
   Future<void> _submit() async {
@@ -81,8 +69,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
       String photo = user.data()?['photoUrl'] ?? "";
 
       List<String> imageUrls = [];
-
-      // A. If user picked images, upload them
       if (_pickedImages.isNotEmpty) {
         for (var image in _pickedImages) {
           var ref = FirebaseStorage.instance.ref().child('properties').child('${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.jpg');
@@ -90,12 +76,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
           String url = await ref.getDownloadURL();
           imageUrls.add(url);
         }
-      }
-      // B. If NO images picked, generate a dynamic placeholder gallery
-      else {
+      } else {
         List<String> pool = List.from(_placeholderPool);
-        pool.shuffle(); // Randomize the list
-        imageUrls = pool.take(4).toList(); // Take 4 unique images
+        pool.shuffle();
+        imageUrls = pool.take(4).toList();
       }
 
       await FirebaseFirestore.instance.collection('properties').add({
@@ -112,7 +96,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
         'sellerId': uid, 'sellerName': name, 'sellerPhoto': photo,
         'imageUrl': imageUrls[0],
         'galleryUrls': imageUrls,
-        'virtualTourUrl': _tourUrlController.text.trim(),
+        'virtualTourUrl': _tourUrlController.text.isNotEmpty ? _tourUrlController.text.trim() : 'https://kuula.co/explore',
         'createdAt': Timestamp.now(),
       });
       widget.onPostComplete();
@@ -130,7 +114,8 @@ class _AddPostScreenState extends State<AddPostScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text("Create Post", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))
+              // --- FIXED: Calls the onCancel callback provided by MainScreen ---
+              IconButton(onPressed: widget.onCancel, icon: const Icon(Icons.close))
             ]),
             const SizedBox(height: 20),
             GestureDetector(
@@ -140,7 +125,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 child: Container(
                   width: double.infinity, height: 160,
                   child: _pickedImages.isEmpty
-                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.blueGrey[300]), const SizedBox(height: 10), const Text("Upload property images", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)), Text("Upload the property you want to sell/rent", style: TextStyle(fontSize: 10, color: Colors.grey[400]))])
+                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.blueGrey[300]), const SizedBox(height: 10), const Text("Upload property images", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)), Text("Up to 10 images", style: TextStyle(fontSize: 10, color: Colors.grey[400]))])
                       : ListView.builder(scrollDirection: Axis.horizontal, itemCount: _pickedImages.length, itemBuilder: (context, index) => Padding(padding: const EdgeInsets.all(8.0), child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(_pickedImages[index], width: 120, height: 120, fit: BoxFit.cover)))),
                 ),
               ),
@@ -169,7 +154,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
               )),
             ]),
             const SizedBox(height: 15),
-            ListTile(onTap: _isProcessing ? null : _selectLocationOnMap, leading: Icon(Icons.map_outlined, color: navy), title: const Text("Select Location on Map", style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(_pickedCoordinates == null ? "Not set" : "GPS Captured ✅"), tileColor: isDark ? Colors.white10 : Colors.grey[50], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            ListTile(onTap: _isProcessing ? null : _selectLocationOnMap, leading: Icon(Icons.map_outlined, color: navy), title: const Text("Select Location on Map", style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(_pickedCoordinates == null ? "Not set" : "Location Captured ✅"), tileColor: isDark ? Colors.white10 : Colors.grey[50], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             const SizedBox(height: 15),
             TextField(controller: _loc, decoration: const InputDecoration(labelText: "Location Area Name", border: OutlineInputBorder())),
             const SizedBox(height: 15),
