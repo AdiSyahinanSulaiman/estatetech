@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Added
-import 'package:firebase_auth/firebase_auth.dart'; // Added
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lottie/lottie.dart';
 import '../widgets/global_user_dp.dart';
 
 class CalculatorScreen extends StatefulWidget {
@@ -19,22 +20,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   final TextEditingController _debtController = TextEditingController();
 
   // State
-  double _budgetMode = 0.30; // Default to Balanced (30%)
+  double _budgetMode = 0.30;
   double _recommendedRent = 0;
   double _remainingBalance = 0;
   final Color navyBlue = const Color(0xFF1B263B);
 
-  // --- NEW: AI BRIDGE LOGIC ---
+  // --- AI BRIDGE LOGIC ---
   void _applyToAI() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
         'calculatedBudget': _recommendedRent,
-        'budgetModeActive': true, // Tells AIEngine to use this budget
+        'budgetModeActive': true,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("AI Feed successfully updated to your budget!")),
+          const SnackBar(content: Text("AI Feed successfully updated!")),
         );
       }
     }
@@ -45,18 +46,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Optimize your Feed?", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("Would you like EstateTech AI to prioritize properties within your BND \$${_recommendedRent.toStringAsFixed(0)} budget on your Home and Explore pages?"),
+        content: Text("Would you like EstateTech AI to prioritize properties within your BND \$${_recommendedRent.toStringAsFixed(0)} budget?"),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Maybe Later", style: TextStyle(color: Colors.grey))
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Maybe Later")),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _applyToAI();
-            },
+            onPressed: () { Navigator.pop(context); _applyToAI(); },
             style: ElevatedButton.styleFrom(backgroundColor: navyBlue),
             child: const Text("Yes, Personalize", style: TextStyle(color: Colors.white)),
           ),
@@ -69,17 +64,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     double salary = double.tryParse(_salaryController.text) ?? 0;
     double debts = double.tryParse(_debtController.text) ?? 0;
     double netIncome = salary - debts;
-
     setState(() {
       _recommendedRent = netIncome * _budgetMode;
       _remainingBalance = netIncome - _recommendedRent;
-      _currentStep = 2; // Move to results
+      _currentStep = 2;
     });
-
-    // Automatically trigger the popup after a short delay
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _showAIBridgeDialog();
-    });
+    Future.delayed(const Duration(milliseconds: 500), () => _showAIBridgeDialog());
   }
 
   @override
@@ -117,30 +107,33 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     return _buildResults();
   }
 
-  // --- STEP 0: INTRO ---
+  // --- STEP 0: INTRO (Fixed Animation) ---
   Widget _buildIntro() {
     return Padding(
       padding: const EdgeInsets.all(30),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              image: const DecorationImage(
-                image: NetworkImage('https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000'),
-                fit: BoxFit.cover,
-              ),
+          SizedBox(
+            height: 250,
+            child: Lottie.network(
+              // NEW STABLE URL: A professional building/finance animation
+              'https://assets9.lottiefiles.com/packages/lf20_at6m8pnd.json',
+              repeat: true,
+              fit: BoxFit.contain,
+              // SAFETY FIX: If the URL fails, show this instead of a red error
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(Icons.calculate_outlined, size: 100, color: navyBlue.withOpacity(0.2));
+              },
             ),
           ),
-          const SizedBox(height: 40),
-          const Text("Know your number", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 30),
+          const Text("Know your number", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),
           const Text(
-            "Calculate your ideal rent budget based on your salary and commitments.",
+            "Calculate your ideal budget based on your salary and commitments.",
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            style: TextStyle(color: Colors.grey, fontSize: 16, height: 1.5),
           ),
           const Spacer(),
           ElevatedButton(
@@ -157,7 +150,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     );
   }
 
-  // --- STEP 1: INPUTS ---
+  // --- STEP 1: INPUTS (Preserved) ---
   Widget _buildInputs() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(25),
@@ -196,7 +189,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     );
   }
 
-  // --- STEP 2: RESULTS ---
+  // --- STEP 2: RESULTS (Preserved) ---
   Widget _buildResults() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(25),
@@ -224,7 +217,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           const SizedBox(height: 30),
           _resultRow("Safe Range", "\$${(_recommendedRent - 150).toStringAsFixed(0)} - \$${(_recommendedRent + 150).toStringAsFixed(0)}", Icons.verified_user_outlined),
           _resultRow("Remaining Balance", "\$${_remainingBalance.toStringAsFixed(0)}", Icons.account_balance_wallet_outlined),
-          _resultRow("Budget Utilization", "${(_budgetMode * 100).toInt()}% of Net", Icons.pie_chart_outline),
           const SizedBox(height: 40),
           OutlinedButton(
             onPressed: () => setState(() => _currentStep = 1),
@@ -239,8 +231,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       ),
     );
   }
-
-  // --- HELPER WIDGETS ---
 
   Widget _inputLabel(String text) {
     return Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87));

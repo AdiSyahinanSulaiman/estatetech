@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../widgets/global_user_dp.dart';
 import '../models/property.dart';
 import 'settings_screen.dart';
@@ -59,9 +60,9 @@ class ProfileScreen extends StatelessWidget {
                         Text(role, style: const TextStyle(color: Colors.grey, fontSize: 16)),
                         const SizedBox(height: 25),
                         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                          if (isLandlord) _buildStat(context, user!.uid, 'properties', 'Posts'),
-                          _buildStat(context, user.uid, 'followers', 'Estaters'),
-                          _buildStat(context, user.uid, 'following', 'Exploring'),
+                          if (isLandlord) _buildStat(context, user!.uid, 'properties', 'Posts', isDark),
+                          _buildStat(context, user.uid, 'followers', 'Estaters', isDark),
+                          _buildStat(context, user.uid, 'following', 'Exploring', isDark),
                         ]),
                         const SizedBox(height: 25),
                         Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => EditProfileScreen(userData: userData))), style: ElevatedButton.styleFrom(backgroundColor: isDark ? Colors.white10 : Colors.grey[100], elevation: 0, minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("Edit Profile", style: TextStyle(color: isDark ? Colors.white : Colors.black)))),
@@ -71,33 +72,23 @@ class ProfileScreen extends StatelessWidget {
                     SliverPersistentHeader(pinned: true, delegate: _SliverAppBarDelegate(
                       TabBar(
                           indicatorColor: navyBlue, labelColor: isDark ? Colors.white : navyBlue, unselectedLabelColor: Colors.grey,
-                          // --- CORRECTED ROLE TAB LOGIC ---
                           tabs: isLandlord
-                              ? const [
-                            Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), // Landlord 1
-                            Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"),
-                            Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings"),
-                          ]
-                              : const [
-                            Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), // Tenant 1
-                            Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"),
-                            Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings"),
-                          ]
+                              ? const [Tab(icon: Icon(Icons.grid_view_rounded), text: "Listings"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
+                              : const [Tab(icon: Icon(Icons.bookmark_outline), text: "Saved"), Tab(icon: Icon(Icons.chat_bubble_outline), text: "Contacted"), Tab(icon: Icon(Icons.calendar_month_outlined), text: "Bookings")]
                       ),
                       Theme.of(context).scaffoldBackgroundColor,
                     )),
                   ];
                 },
                 body: TabBarView(
-                  // --- CORRECTED ROLE BODY LOGIC ---
                   children: isLandlord
                       ? [
-                    const UserListingsScreen(), // Landlord starts with Listings
+                    const UserListingsScreen(),
                     ContactedLandlordsTab(currentUserId: user!.uid),
                     BookedViewingsTab(currentUserId: user.uid, isLandlord: true)
                   ]
                       : [
-                    const SavedScreen(), // Tenant starts with Saved
+                    const SavedScreen(),
                     ContactedLandlordsTab(currentUserId: user!.uid),
                     BookedViewingsTab(currentUserId: user.uid, isLandlord: false)
                   ],
@@ -110,9 +101,9 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(BuildContext context, String uid, String collection, String label) {
+  Widget _buildStat(BuildContext context, String uid, String collection, String label, bool isDark) {
     Stream<QuerySnapshot> stream = (collection == 'properties') ? FirebaseFirestore.instance.collection('properties').where('sellerId', isEqualTo: uid).snapshots() : FirebaseFirestore.instance.collection('users').doc(uid).collection(collection).snapshots();
-    return InkWell(onTap: () { Navigator.push(context, MaterialPageRoute(builder: (c) => UsersListScreen(userId: uid, title: label, collectionName: collection))); }, child: StreamBuilder<QuerySnapshot>(stream: stream, builder: (context, snap) { String value = snap.hasData ? snap.data!.docs.length.toString() : "0"; return Column(children: [Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))]); }));
+    return InkWell(onTap: () { Navigator.push(context, MaterialPageRoute(builder: (c) => UsersListScreen(userId: uid, title: label, collectionName: collection))); }, child: StreamBuilder<QuerySnapshot>(stream: stream, builder: (context, snap) { String value = snap.hasData ? snap.data!.docs.length.toString() : "0"; return Column(children: [Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))]); }));
   }
 }
 
@@ -152,7 +143,7 @@ class BookedViewingsTab extends StatelessWidget {
   const BookedViewingsTab({super.key, required this.currentUserId, required this.isLandlord});
 
   void _confirmAction(BuildContext context, String docId, String status) {
-    String actionText = status == "Approved" ? "Approve" : status == "Rejected" ? "Reject" : "Cancel";
+    String actionText = status == "Approved" ? "Approve" : "Cancel";
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -172,6 +163,31 @@ class BookedViewingsTab extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _rescheduleBooking(BuildContext context, String docId, String oldDate, String oldTime) async {
+    DateTime? pickedDate = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now().add(const Duration(days: 1)),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 30))
+    );
+    if (pickedDate == null) return;
+    TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 10, minute: 0));
+
+    if (pickedTime != null) {
+      String formattedDate = DateFormat('MMM dd, yyyy').format(pickedDate);
+      String formattedTime = pickedTime.format(context);
+
+      await FirebaseFirestore.instance.collection('bookings').doc(docId).update({
+        'status': 'Rescheduled',
+        'date': formattedDate,
+        'time': formattedTime,
+        'previousDate': oldDate,
+        'previousTime': oldTime,
+      });
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("New time suggested.")));
+    }
   }
 
   void _deleteBookingRecord(BuildContext context, String bookingId) async {
@@ -216,6 +232,10 @@ class BookedViewingsTab extends StatelessWidget {
               builder: (context, pSnap) {
                 bool isDeleted = pSnap.hasData && !pSnap.data!.exists;
                 String propertyName = isDeleted ? "Listing Removed" : (booking['propertyName'] ?? "Property");
+                String? imageUrl;
+                if (pSnap.hasData && pSnap.data!.exists) {
+                  imageUrl = (pSnap.data!.data() as Map<String, dynamic>)['imageUrl'];
+                }
 
                 return Card(
                   color: Theme.of(context).cardColor,
@@ -227,12 +247,19 @@ class BookedViewingsTab extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(15.0),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
+                              // --- RESTORED IMAGE LOGIC ---
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Container(
+                                child: imageUrl != null
+                                    ? Image.network(
+                                  imageUrl, width: 50, height: 50, fit: BoxFit.cover,
+                                  errorBuilder: (c,e,s) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.home, color: Colors.grey)),
+                                )
+                                    : Container(
                                   width: 50, height: 50, color: Colors.grey[200],
                                   child: Icon(isDeleted ? Icons.delete_outline : Icons.home, color: Colors.grey),
                                 ),
@@ -240,7 +267,14 @@ class BookedViewingsTab extends StatelessWidget {
                               const SizedBox(width: 12),
                               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text(propertyName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDeleted ? Colors.redAccent : null)),
-                                Text("${booking['date']} @ ${booking['time'] ?? 'TBD'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                if (status == "Rescheduled" && booking['previousDate'] != null) ...[
+                                  Text("Previous: ${booking['previousDate']} @ ${booking['previousTime']}",
+                                      style: const TextStyle(color: Colors.grey, fontSize: 10, decoration: TextDecoration.lineThrough)),
+                                  Text("Requested: ${booking['date']} @ ${booking['time']}",
+                                      style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ] else ...[
+                                  Text("${booking['date']} @ ${booking['time'] ?? 'TBD'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                ],
                               ])),
                               _statusBadge(status),
                             ],
@@ -270,24 +304,27 @@ class BookedViewingsTab extends StatelessWidget {
                             ],
                           ),
 
-                          if (isLandlord && status == "Pending" && !isDeleted) ...[
+                          if (!isDeleted) ...[
                             const SizedBox(height: 15),
-                            Row(children: [
-                              Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Rejected"), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text("Reject", style: TextStyle(color: Colors.red)))),
-                              const SizedBox(width: 10),
-                              Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
-                            ]),
-                          ] else if (!isLandlord && (status == "Pending" || status == "Approved") && !isDeleted)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 15),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                    onPressed: () => _confirmAction(context, doc.id, "Cancelled"),
-                                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
-                                    child: const Text("Cancel Request", style: TextStyle(color: Colors.red))),
-                              ),
-                            ),
+                            if (isLandlord && status == "Pending")
+                              Row(children: [
+                                Expanded(child: OutlinedButton(onPressed: () => _rescheduleBooking(context, doc.id, booking['date'], booking['time'] ?? 'TBD'), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.orange)), child: const Text("Reschedule", style: TextStyle(color: Colors.orange)))),
+                                const SizedBox(width: 10),
+                                Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
+                              ])
+                            else if (!isLandlord && status == "Rescheduled")
+                              Column(children: [
+                                const Text("Landlord suggested new time", style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                                Row(children: [
+                                  Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Cancelled"), child: const Text("Decline", style: TextStyle(color: Colors.red)))),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text("Accept", style: TextStyle(color: Colors.white)))),
+                                ]),
+                              ])
+                            else if (!isLandlord && (status == "Pending" || status == "Approved"))
+                                SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Cancelled"), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text("Cancel Request", style: TextStyle(color: Colors.red)))),
+                          ],
                         ],
                       ),
                     ),
@@ -305,6 +342,7 @@ class BookedViewingsTab extends StatelessWidget {
     Color color = Colors.orange;
     if (status == "Approved") color = Colors.green;
     if (status == "Rejected" || status == "Cancelled") color = Colors.red;
+    if (status == "Rescheduled") color = Colors.blue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
