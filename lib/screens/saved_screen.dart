@@ -11,13 +11,15 @@ class SavedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final String myId = FirebaseAuth.instance.currentUser!.uid;
     final Color navy = const Color(0xFF1B263B);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Responsive ratio logic
+    // Responsive ratio logic (Preserved)
     double width = MediaQuery.of(context).size.width;
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // FIXED: Background is now theme-aware
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: StreamBuilder<QuerySnapshot>(
         // 1. Listen to your saved IDs collection
         stream: FirebaseFirestore.instance
@@ -62,7 +64,7 @@ class SavedScreen extends StatelessWidget {
                 itemCount: savedProps.length,
                 itemBuilder: (context, index) {
                   final item = savedProps[index];
-                  return _buildCompactCard(context, item, navy);
+                  return _buildCompactCard(context, item, navy, isDark);
                 },
               );
             },
@@ -72,7 +74,7 @@ class SavedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactCard(BuildContext context, Property item, Color navy) {
+  Widget _buildCompactCard(BuildContext context, Property item, Color navy, bool isDark) {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -80,9 +82,10 @@ class SavedScreen extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          // FIXED: Card background respects dark mode
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +127,11 @@ class SavedScreen extends StatelessWidget {
                 children: [
                   Text(
                     item.location,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                        color: isDark ? Colors.white : Colors.black // FIXED: Visible text
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

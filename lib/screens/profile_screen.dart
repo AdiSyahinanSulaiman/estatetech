@@ -30,7 +30,8 @@ class ProfileScreen extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
         var userData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-        String name = userData['name'] ?? "User", role = userData['role'] ?? "Tenant";
+        String name = userData['name'] ?? "User";
+        String role = userData['role'] ?? "Tenant";
         bool isLandlord = role == "Landlord";
 
         return DefaultTabController(
@@ -142,23 +143,38 @@ class BookedViewingsTab extends StatelessWidget {
   final bool isLandlord;
   const BookedViewingsTab({super.key, required this.currentUserId, required this.isLandlord});
 
-  void _confirmAction(BuildContext context, String docId, String status) {
-    String actionText = status == "Approved" ? "Approve" : "Cancel";
+  // --- UPDATED MASTER ACTION HANDLER ---
+  void _confirmAction(BuildContext context, String docId, String actionType) {
+    final Color navyBlue = const Color(0xFF1B263B);
+
+    // Determine custom text for deletion vs status update
+    String title = actionType == "Delete" ? "Delete Record?" : "$actionType Booking?";
+    String content = actionType == "Delete"
+        ? "Are you sure you want to permanently remove this record from your history?"
+        : "Are you sure you want to $actionType this viewing request?";
+    String confirmBtnText = actionType == "Delete" ? "Yes, Delete" : "Yes, $actionType";
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("$actionText Booking?", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("Are you sure you want to $actionText this viewing request?"),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(content),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("No")),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              FirebaseFirestore.instance.collection('bookings').doc(docId).update({'status': status});
+              if (actionType == "Delete") {
+                // FIXED: Actually delete the document from Firestore
+                await FirebaseFirestore.instance.collection('bookings').doc(docId).delete();
+              } else {
+                // Update status (Approve/Cancel)
+                await FirebaseFirestore.instance.collection('bookings').doc(docId).update({'status': actionType});
+              }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)),
-            child: Text("Yes, $actionText"),
+            style: ElevatedButton.styleFrom(backgroundColor: actionType == "Delete" ? Colors.red : navyBlue),
+            child: Text(confirmBtnText, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -174,26 +190,12 @@ class BookedViewingsTab extends StatelessWidget {
     );
     if (pickedDate == null) return;
     TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 10, minute: 0));
-
     if (pickedTime != null) {
       String formattedDate = DateFormat('MMM dd, yyyy').format(pickedDate);
       String formattedTime = pickedTime.format(context);
-
       await FirebaseFirestore.instance.collection('bookings').doc(docId).update({
-        'status': 'Rescheduled',
-        'date': formattedDate,
-        'time': formattedTime,
-        'previousDate': oldDate,
-        'previousTime': oldTime,
+        'status': 'Rescheduled', 'date': formattedDate, 'time': formattedTime, 'previousDate': oldDate, 'previousTime': oldTime,
       });
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("New time suggested.")));
-    }
-  }
-
-  void _deleteBookingRecord(BuildContext context, String bookingId) async {
-    await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Record cleared.")));
     }
   }
 
@@ -207,6 +209,7 @@ class BookedViewingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color navyBlue = const Color(0xFF1B263B);
     Query query = FirebaseFirestore.instance.collection('bookings');
     query = isLandlord ? query.where('landlordId', isEqualTo: currentUserId) : query.where('tenantId', isEqualTo: currentUserId);
 
@@ -226,101 +229,74 @@ class BookedViewingsTab extends StatelessWidget {
             String status = booking['status'] ?? "Pending";
             String propertyId = booking['propertyId'] ?? "";
             String tenantId = booking['tenantId'] ?? "";
+            bool isDeletable = status == "Cancelled" || status == "Rejected";
 
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance.collection('properties').doc(propertyId).get(),
               builder: (context, pSnap) {
-                bool isDeleted = pSnap.hasData && !pSnap.data!.exists;
-                String propertyName = isDeleted ? "Listing Removed" : (booking['propertyName'] ?? "Property");
-                String? imageUrl;
-                if (pSnap.hasData && pSnap.data!.exists) {
-                  imageUrl = (pSnap.data!.data() as Map<String, dynamic>)['imageUrl'];
-                }
+                bool isDeletedListing = pSnap.hasData && !pSnap.data!.exists;
+                String propertyName = isDeletedListing ? "Listing Removed" : (booking['propertyName'] ?? "Property");
+                String? imageUrl = (pSnap.hasData && pSnap.data!.exists) ? (pSnap.data!.data() as Map<String, dynamic>)['imageUrl'] : null;
 
                 return Card(
                   color: Theme.of(context).cardColor,
                   margin: const EdgeInsets.only(bottom: 15),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.withOpacity(0.1))),
                   child: InkWell(
-                    onTap: isDeleted ? null : () => _openHouseDetails(context, propertyId),
+                    onTap: isDeletedListing ? null : () => _openHouseDetails(context, propertyId),
+                    // --- LONG PRESS DELETE (Calls the fixed Logic) ---
+                    onLongPress: isDeletable || isDeletedListing ? () => _confirmAction(context, doc.id, "Delete") : null,
                     borderRadius: BorderRadius.circular(15),
                     child: Padding(
                       padding: const EdgeInsets.all(15.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              // --- RESTORED IMAGE LOGIC ---
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: imageUrl != null
-                                    ? Image.network(
-                                  imageUrl, width: 50, height: 50, fit: BoxFit.cover,
-                                  errorBuilder: (c,e,s) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.home, color: Colors.grey)),
-                                )
-                                    : Container(
-                                  width: 50, height: 50, color: Colors.grey[200],
-                                  child: Icon(isDeleted ? Icons.delete_outline : Icons.home, color: Colors.grey),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(propertyName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDeleted ? Colors.redAccent : null)),
-                                if (status == "Rescheduled" && booking['previousDate'] != null) ...[
-                                  Text("Previous: ${booking['previousDate']} @ ${booking['previousTime']}",
-                                      style: const TextStyle(color: Colors.grey, fontSize: 10, decoration: TextDecoration.lineThrough)),
-                                  Text("Requested: ${booking['date']} @ ${booking['time']}",
-                                      style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
-                                ] else ...[
-                                  Text("${booking['date']} @ ${booking['time'] ?? 'TBD'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                ],
-                              ])),
-                              _statusBadge(status),
-                            ],
-                          ),
+                          Row(children: [
+                            ClipRRect(borderRadius: BorderRadius.circular(8), child: Container(width: 50, height: 50, color: Colors.grey[200], child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.cover) : Icon(isDeletedListing ? Icons.delete_outline : Icons.home, color: Colors.grey))),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(propertyName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDeletedListing ? Colors.redAccent : null)),
+                              if (status == "Rescheduled" && booking['previousDate'] != null) ...[
+                                Text("Previous: ${booking['previousDate']} @ ${booking['previousTime']}", style: const TextStyle(color: Colors.grey, fontSize: 10, decoration: TextDecoration.lineThrough)),
+                                Text("Requested: ${booking['date']} @ ${booking['time']}", style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ] else Text("${booking['date']} @ ${booking['time'] ?? 'TBD'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            ])),
+                            _statusBadge(status),
+                          ]),
                           const Divider(height: 30),
-                          Row(
-                            children: [
-                              GlobalUserDP(radius: 15, userId: isLandlord ? tenantId : booking['landlordId']),
-                              const SizedBox(width: 10),
-                              FutureBuilder<DocumentSnapshot>(
-                                future: FirebaseFirestore.instance.collection('users').doc(isLandlord ? tenantId : booking['landlordId']).get(),
-                                builder: (context, uSnap) {
-                                  String uName = "User";
-                                  if (uSnap.hasData && uSnap.data!.exists) uName = (uSnap.data!.data() as Map<String, dynamic>)['name'] ?? "User";
-                                  return Text(isLandlord ? "Requested by: $uName" : "Host: $uName", style: const TextStyle(fontSize: 13, color: Colors.blueGrey));
-                                },
-                              ),
-                              const Spacer(),
-                              if (!isDeleted)
-                                const Text("View Details", style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold))
-                              else
-                                TextButton.icon(
-                                  onPressed: () => _deleteBookingRecord(context, doc.id),
-                                  icon: const Icon(Icons.delete_forever, color: Colors.red, size: 14),
-                                  label: const Text("Clear Record", style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                            ],
-                          ),
-
-                          if (!isDeleted) ...[
+                          Row(children: [
+                            GlobalUserDP(radius: 15, userId: isLandlord ? tenantId : booking['landlordId']),
+                            const SizedBox(width: 10),
+                            FutureBuilder<DocumentSnapshot>(
+                              future: FirebaseFirestore.instance.collection('users').doc(isLandlord ? tenantId : booking['landlordId']).get(),
+                              builder: (context, uSnap) {
+                                String uName = uSnap.hasData ? (uSnap.data!.data() as Map<String, dynamic>)['name'] ?? "User" : "Loading...";
+                                return Text(isLandlord ? "From: $uName" : "Host: $uName", style: const TextStyle(fontSize: 13, color: Colors.blueGrey));
+                              },
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(Icons.chat_bubble_outline, color: navyBlue, size: 20),
+                              onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (c) => ChatDetailScreen(sellerId: isLandlord ? tenantId : booking['landlordId'], propertyId: propertyId)));
+                              },
+                            ),
+                            const Icon(Icons.chevron_right, size: 14, color: Colors.grey),
+                          ]),
+                          if (!isDeletedListing) ...[
                             const SizedBox(height: 15),
                             if (isLandlord && status == "Pending")
                               Row(children: [
                                 Expanded(child: OutlinedButton(onPressed: () => _rescheduleBooking(context, doc.id, booking['date'], booking['time'] ?? 'TBD'), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.orange)), child: const Text("Reschedule", style: TextStyle(color: Colors.orange)))),
                                 const SizedBox(width: 10),
-                                Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B263B)), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
+                                Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: navyBlue), child: const Text("Approve", style: TextStyle(color: Colors.white)))),
                               ])
                             else if (!isLandlord && status == "Rescheduled")
-                              Column(children: [
-                                const Text("Landlord suggested new time", style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 8),
-                                Row(children: [
-                                  Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Cancelled"), child: const Text("Decline", style: TextStyle(color: Colors.red)))),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text("Accept", style: TextStyle(color: Colors.white)))),
-                                ]),
+                              Row(children: [
+                                Expanded(child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Cancelled"), child: const Text("Decline", style: TextStyle(color: Colors.red)))),
+                                const SizedBox(width: 10),
+                                Expanded(child: ElevatedButton(onPressed: () => _confirmAction(context, doc.id, "Approved"), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text("Accept", style: TextStyle(color: Colors.white)))),
                               ])
                             else if (!isLandlord && (status == "Pending" || status == "Approved"))
                                 SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => _confirmAction(context, doc.id, "Cancelled"), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)), child: const Text("Cancel Request", style: TextStyle(color: Colors.red)))),

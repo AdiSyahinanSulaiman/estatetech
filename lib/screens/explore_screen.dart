@@ -22,7 +22,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Map<String, dynamic>? _userVector;
   final String myId = FirebaseAuth.instance.currentUser!.uid;
 
-  // --- NEW: SESSION TIMER FOR AI ---
   DateTime _sessionStartTime = DateTime.now();
 
   @override
@@ -37,7 +36,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (mounted) {
         setState(() {
           _userVector = userDoc.data();
-          // Reset the session time on pull-to-refresh
           _sessionStartTime = DateTime.now();
         });
       }
@@ -53,10 +51,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
+      // FIXED: Respects Dark Mode background
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("Explore", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-        backgroundColor: Colors.white, elevation: 0,
+        // FIXED: Header respects theme
+        title: Text("Explore", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 15),
@@ -69,9 +70,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             padding: const EdgeInsets.all(15),
             child: TextField(
                 onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: Icon(Icons.search, color: isDark ? Colors.white70 : Colors.grey),
                     hintText: "Search location...",
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                     filled: true,
                     fillColor: isDark ? Colors.white10 : Colors.grey[100]
@@ -89,7 +92,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: Container(
                     margin: const EdgeInsets.only(right: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(color: isSel ? navy : (isDark ? Colors.white10 : Colors.grey[100]), borderRadius: BorderRadius.circular(20)),
+                    decoration: BoxDecoration(
+                        color: isSel ? navy : (isDark ? Colors.white10 : Colors.grey[100]),
+                        borderRadius: BorderRadius.circular(20)
+                    ),
                     child: Text(cat, style: TextStyle(color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black54), fontWeight: FontWeight.bold, fontSize: 12))
                 ),
               );
@@ -116,7 +122,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   return matchesCat && matchesSearch;
                 }).toList();
 
-                // --- FIXED: Now passing all 3 arguments: Props, Vector, and SessionTime ---
                 List<Property> rankedProps = _ai.rankFeed(filteredProps, _userVector, _sessionStartTime);
 
                 if (rankedProps.isEmpty) return const Center(child: Text("No listings found."));
@@ -137,7 +142,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => DetailsScreen(property: item))),
                       child: Container(
                         decoration: BoxDecoration(
-                            color: isDark ? Colors.white10 : Colors.white,
+                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100)
                         ),
