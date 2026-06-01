@@ -130,7 +130,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
 
-                // --- NEW: RESET AI BUDGET TILE ---
+                // --- RESET AI BUDGET TILE ---
                 _buildSettingTile(
                   context,
                   Icons.restart_alt,

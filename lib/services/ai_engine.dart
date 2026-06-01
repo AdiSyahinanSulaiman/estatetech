@@ -1,6 +1,8 @@
 import '../models/property.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AIEngine {
+  // Weights derived from your Google Colab Kaggle session
   static const double KAGGLE_ROOM_WEIGHT = -12773.27;
   static const double KAGGLE_SQFT_WEIGHT = 66819.82;
 
@@ -13,6 +15,8 @@ class AIEngine {
     if (pref == null || pref.isEmpty) return 0.0;
 
     bool budgetModeActive = pref['budgetModeActive'] ?? false;
+
+    // Logic: Use the budget from calculator if active, else use historical average
     double targetP = budgetModeActive
         ? (pref['calculatedBudget'] ?? 2000.0).toDouble()
         : (pref['avgPrice'] ?? 2000.0).toDouble();
@@ -24,6 +28,7 @@ class AIEngine {
     double rDiff = _norm((p.rooms - targetR).abs(), 0, 10);
     double sDiff = _norm((p.sqft - targetS).abs(), 0, 5000);
 
+    // If Budget Mode is ON, price is 90% of the score.
     double priceWeight = budgetModeActive ? 0.90 : 0.50;
     double featureWeight = 1.0 - priceWeight;
 
@@ -39,7 +44,7 @@ class AIEngine {
     List<Property> sortedList = List.from(allProps);
 
     sortedList.sort((a, b) {
-      // FRESHNESS OVERRIDE
+      // FRESHNESS OVERRIDE: Newest posts stay at the top until a manual refresh
       bool aIsNew = a.createdAt.isAfter(lastRefreshTime);
       bool bIsNew = b.createdAt.isAfter(lastRefreshTime);
 
