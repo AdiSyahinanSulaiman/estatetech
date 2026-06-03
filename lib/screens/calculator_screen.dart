@@ -129,7 +129,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           Text("Know your number", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
           const SizedBox(height: 15),
           const Text(
-            "Calculate your ideal rent budget based on your salary and commitments.",
+            "Calculate your ideal budget based on your salary and commitments.",
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey, fontSize: 16, height: 1.5),
           ),
@@ -201,7 +201,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             ),
             child: Column(
               children: [
-                const Text("Recommended Monthly Rent", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const Text("Recommended Monthly Payment", style: TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 10),
                 Text(
                   "BND \$${_recommendedRent.toStringAsFixed(0)}",
