@@ -2,7 +2,8 @@ import '../models/property.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AIEngine {
-  // Weights derived from your Google Colab Kaggle session
+  // ACADEMIC NOTE: Feature weights derived from Linear Regression training
+  // on the Kaggle 'House Prices' dataset (Rooms: -12773.27, Sqft: 66819.82).
   static const double KAGGLE_ROOM_WEIGHT = -12773.27;
   static const double KAGGLE_SQFT_WEIGHT = 66819.82;
 

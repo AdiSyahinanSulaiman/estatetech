@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ]),
                       )),
 
-                      // Property Info Section (UI 100% PRESERVED)
+                      // Property Info Section
                       Positioned(bottom: 50, left: 20, right: 90, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(item.houseType.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                         Text(item.location, style: const TextStyle(color: Colors.white70, fontSize: 18)),
@@ -107,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text('Monthly: \$${item.monthlyPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         Text('Full Price: \$${(item.totalPrice / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300)),
 
-                        // --- NEW: SUBTLE STATUS TEXT (Light Gray / white70) ---
                         Text(
                             'Listing: For ${item.listingType}',
                             style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)

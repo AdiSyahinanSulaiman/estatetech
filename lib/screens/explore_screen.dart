@@ -51,10 +51,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
-      // FIXED: Respects Dark Mode background
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        // FIXED: Header respects theme
+        // FIXED
         title: Text("Explore", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,

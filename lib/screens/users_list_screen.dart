@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/global_user_dp.dart';
-import 'view_profile_screen.dart'; // FIXED: Added this import to enable stalking
+import 'view_profile_screen.dart'; // FIXED: Added this import to enable checking profile
 
 class UsersListScreen extends StatelessWidget {
   final String userId;

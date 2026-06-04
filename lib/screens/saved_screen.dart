@@ -13,15 +13,13 @@ class SavedScreen extends StatelessWidget {
     final Color navy = const Color(0xFF1B263B);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Responsive ratio logic (Preserved)
+    // Responsive ratio logic
     double width = MediaQuery.of(context).size.width;
     double responsiveRatio = width < 600 ? 0.65 : 1.2;
 
     return Scaffold(
-      // FIXED: Background is now theme-aware
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: StreamBuilder<QuerySnapshot>(
-        // 1. Listen to your saved IDs collection
         stream: FirebaseFirestore.instance
             .collection('users')
             .doc(myId)
@@ -42,12 +40,10 @@ class SavedScreen extends StatelessWidget {
           }
 
           return StreamBuilder<QuerySnapshot>(
-            // 2. Listen to the properties collection
             stream: FirebaseFirestore.instance.collection('properties').snapshots(),
             builder: (context, propSnapshot) {
               if (!propSnapshot.hasData) return const SizedBox();
 
-              // Filter properties locally based on your saved IDs
               final savedProps = propSnapshot.data!.docs
                   .where((doc) => savedIds.contains(doc.id))
                   .map((doc) => Property.fromMap(doc.data() as Map<String, dynamic>, doc.id))

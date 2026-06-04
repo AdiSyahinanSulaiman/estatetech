@@ -54,7 +54,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   Future checkEmailVerified() async {
-    // CRITICAL: You must reload the user to get the latest status from Firebase
     await FirebaseAuth.instance.currentUser?.reload();
 
     setState(() {
@@ -64,7 +63,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     if (isEmailVerified) {
       timer?.cancel();
       if (mounted) {
-        // SUCCESS: Move to the main app
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),

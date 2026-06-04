@@ -143,7 +143,6 @@ class BookedViewingsTab extends StatelessWidget {
   final bool isLandlord;
   const BookedViewingsTab({super.key, required this.currentUserId, required this.isLandlord});
 
-  // --- UPDATED MASTER ACTION HANDLER ---
   void _confirmAction(BuildContext context, String docId, String actionType) {
     final Color navyBlue = const Color(0xFF1B263B);
 

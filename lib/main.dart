@@ -13,7 +13,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Try to initialize. Wrap in try/catch just for safety during demo
   try {
     await LocalNotificationService.initialize();
   } catch (e) {

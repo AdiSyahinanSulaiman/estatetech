@@ -12,7 +12,7 @@ import 'map_picker_screen.dart';
 class AddPostScreen extends StatefulWidget {
   final VoidCallback onPostStart;
   final VoidCallback onPostComplete;
-  final VoidCallback onCancel; // Added for the X button
+  final VoidCallback onCancel;
   const AddPostScreen({super.key, required this.onPostStart, required this.onPostComplete, required this.onCancel});
 
   @override

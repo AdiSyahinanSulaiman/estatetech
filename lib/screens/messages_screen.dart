@@ -103,7 +103,7 @@ class MessagesScreen extends StatelessWidget {
                       // --- SAFETY LOGIC FOR SELF-MESSAGING ---
                       String partnerId;
                       if (users.length == 1) {
-                        partnerId = users[0]; // It's a chat with yourself
+                        partnerId = users[0];
                       } else {
                         partnerId = users.firstWhere((id) => id != myId, orElse: () => myId);
                       }

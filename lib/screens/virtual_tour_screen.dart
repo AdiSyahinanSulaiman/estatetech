@@ -17,7 +17,6 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
   void initState() {
     super.initState();
 
-    // --- FIX: AUTOMATIC SCHEME CHECK ---
     // If the user pastes "my.matterport.com...", this adds "https://" automatically
     String finalUrl = widget.imageUrl.trim();
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -29,7 +28,6 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
       ..setBackgroundColor(Colors.black)
 
     // UNIVERSAL USER AGENT
-    // Matterport requires this to enable the 3D 'Dollhouse' and smooth navigation
       ..setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 
       ..setNavigationDelegate(
@@ -50,7 +48,6 @@ class _VirtualTourScreenState extends State<VirtualTourScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // UI 100% PRESERVED
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,

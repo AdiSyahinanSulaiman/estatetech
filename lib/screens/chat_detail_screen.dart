@@ -6,14 +6,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // Add this
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../widgets/global_user_dp.dart';
-import 'map_picker_screen.dart'; // Import the new screen
+import 'map_picker_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String sellerId;

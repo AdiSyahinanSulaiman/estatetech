@@ -141,7 +141,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
               const SizedBox(height: 40),
 
-              // --- UPDATED: BUTTON LOGIC (Message always available) ---
+              // --- UPDATED: BUTTON LOGIC ---
               StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance.collection('bookings')
                       .where('propertyId', isEqualTo: widget.property.id)

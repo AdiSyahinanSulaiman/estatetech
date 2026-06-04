@@ -54,7 +54,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             mapType: MapType.normal,
           ),
 
-          // STATIC CENTER PIN (High-end UX)
+          // STATIC CENTER PIN
           Center(
             child: Padding(
               // FIXED: Changed .bottom to .only(bottom: ...)
@@ -63,7 +63,6 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             ),
           ),
 
-          // INSTRUCTION OVERLAY
           Positioned(
             bottom: 30, left: 20, right: 20,
             child: Container(

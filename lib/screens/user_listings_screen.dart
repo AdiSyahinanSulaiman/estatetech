@@ -7,7 +7,6 @@ import 'details_screen.dart';
 class UserListingsScreen extends StatelessWidget {
   const UserListingsScreen({super.key});
 
-  // --- DELETE CONFIRMATION DIALOG (Preserved) ---
   void _confirmDelete(BuildContext context, String propertyId) {
     showDialog(
       context: context,
@@ -94,7 +93,6 @@ class UserListingsScreen extends StatelessWidget {
                               fit: BoxFit.cover
                           ),
                         ),
-                        // THE DELETE TRIGGER (RED 'X')
                         Positioned(
                           top: 4, right: 4,
                           child: GestureDetector(
